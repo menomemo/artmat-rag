@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/cache/
+data/raw/_probe*
+data/probe_*.html
+.streamlit/secrets.toml
+
+# Source and derived corpus data. Regenerable by `make ingest chunk index`, and
+# 55 MB of it -- a repo that a grader clones should carry the code and the
+# evaluation results, not a copy of Tate's CSV export.
+data/raw/
+data/*.csv
+data/chunks.jsonl
+data/rewrites.json
+data/answers.json

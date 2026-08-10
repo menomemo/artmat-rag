@@ -1,0 +1,155 @@
+{
+  "uid": "artmat-monitoring",
+  "title": "artmat-rag — usage & quality",
+  "description": "Seven panels over the Postgres query log. The choice of panels follows the failure modes this system actually has: a retrieval hit-rate of 0.59 on realistic questions means the interesting question is not 'is it up' but 'is it answering from the right sources, is anyone finding it useful, and what is it costing'.",
+  "tags": ["artmat", "rag"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Questions asked",
+      "description": "Volume over time. The baseline every other panel is read against.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60 }, "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('hour', asked_at) AS time, count(*) AS \"questions\" FROM queries WHERE $__timeFilter(asked_at) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "piechart",
+      "title": "Which layer is answering",
+      "description": "Passages served, by source layer. This is the panel that says whether the corpus is balanced in practice or whether one layer — manufacturer datasheets are 58% of chunks — is crowding the others out of every answer.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT layer AS metric, sum(n)::bigint AS value FROM queries q, LATERAL (SELECT key AS layer, (value)::text::int AS n FROM jsonb_each(q.source_counts)) s WHERE $__timeFilter(q.asked_at) GROUP BY layer ORDER BY value DESC",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Latency: retrieval vs generation",
+      "description": "Split deliberately. Retrieval is ~20 ms and generation is tens of seconds, so a single 'response time' line would hide the only component anyone can tune.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ms", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('hour', asked_at) AS time, percentile_cont(0.5) WITHIN GROUP (ORDER BY retrieval_ms) AS \"retrieval p50\", percentile_cont(0.5) WITHIN GROUP (ORDER BY generate_ms) AS \"generation p50\", percentile_cont(0.95) WITHIN GROUP (ORDER BY total_ms) AS \"total p95\" FROM queries WHERE $__timeFilter(asked_at) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Feedback",
+      "description": "Rated queries only, with the response rate beside it. A satisfaction figure with no denominator is not a measurement.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "orange", "value": 50 }, { "color": "green", "value": 75 }
+          ]}
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "queries rated (%)" },
+            "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } } ] },
+          { "matcher": { "id": "byName", "options": "total questions" },
+            "properties": [ { "id": "unit", "value": "short" },
+                            { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } } ] }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT count(*) FILTER (WHERE f.rating = 1)::float / NULLIF(count(f.id), 0) * 100 AS \"useful (%)\", count(f.id)::float / NULLIF(count(q.id), 0) * 100 AS \"queries rated (%)\", count(q.id) AS \"total questions\" FROM queries q LEFT JOIN feedback f ON f.query_id = q.id WHERE $__timeFilter(q.asked_at)",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Cost per day (USD)",
+      "description": "Priced at call time and stored, not recomputed. What a query cost on the day it ran does not change when a price list does.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "bars", "fillOpacity": 70 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', asked_at) AS time, sum(cost_usd) AS \"cost\" FROM queries WHERE $__timeFilter(asked_at) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "barchart",
+      "title": "Answer style: usage and rating",
+      "description": "The three prompt variants are shipped, not just evaluated offline. This is where the offline judge scores get checked against people.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "xField": "variant", "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT q.variant AS variant, count(q.id) AS \"questions\", count(f.id) FILTER (WHERE f.rating = 1) AS \"rated useful\", count(f.id) FILTER (WHERE f.rating = -1) AS \"rated not useful\" FROM queries q LEFT JOIN feedback f ON f.query_id = q.id WHERE $__timeFilter(q.asked_at) GROUP BY q.variant ORDER BY 2 DESC",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Recent questions, and how they were rewritten",
+      "description": "The rewrite is where a wrong answer usually starts. Reading the original beside the rewrite is the fastest way to see the system misunderstand someone.",
+      "datasource": { "type": "postgres", "uid": "artmat-pg" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "options": { "cellHeight": "sm", "footer": { "show": false } },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT q.asked_at AS \"when\", q.question, q.rewritten, q.n_hits, CASE f.rating WHEN 1 THEN 'useful' WHEN -1 THEN 'not useful' ELSE '—' END AS rating FROM queries q LEFT JOIN feedback f ON f.query_id = q.id WHERE $__timeFilter(q.asked_at) ORDER BY q.asked_at DESC LIMIT 50",
+          "rawQuery": true
+        }
+      ]
+    }
+  ]
+}

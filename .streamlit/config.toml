@@ -1,0 +1,18 @@
+# Committed on purpose: the theme is part of what the deployed app looks like,
+# and a deployment that depends on settings clicked into a web console is not
+# reproducible. Colours only -- nothing here changes behaviour.
+[theme]
+base = "light"
+primaryColor = "#1f4e5f"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f4f1ec"
+textColor = "#1a1a1a"
+font = "serif"
+
+[server]
+# The upload widget is unused; 200 MB of default headroom is 200 MB of attack
+# surface on a public URL.
+maxUploadSize = 1
+
+[browser]
+gatherUsageStats = false

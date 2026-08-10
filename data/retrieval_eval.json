@@ -1,0 +1,332 @@
+[
+  {
+    "method": "dense",
+    "k": 5,
+    "latency_ms_p50": 17.31535408180207,
+    "latency_ms_p95": 23.952381790149957,
+    "styles": {
+      "literal": {
+        "n": 200,
+        "hit_rate": 0.935,
+        "mrr": 0.8353333333333333,
+        "hit_rate_doc": 0.955,
+        "mrr_doc": 0.8889166666666667,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 1.0,
+            "mrr": 0.961111111111111
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 1.0,
+            "mrr": 0.9361111111111111
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.8631578947368421,
+            "mrr": 0.7059649122807017
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 1.0,
+            "mrr": 1.0
+          }
+        }
+      },
+      "artist": {
+        "n": 200,
+        "hit_rate": 0.445,
+        "mrr": 0.35291666666666666,
+        "hit_rate_doc": 0.515,
+        "mrr_doc": 0.40850000000000003,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 0.7666666666666667,
+            "mrr": 0.6094444444444445
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 0.7833333333333333,
+            "mrr": 0.6838888888888889
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.12631578947368421,
+            "mrr": 0.07035087719298246
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 0.4666666666666667,
+            "mrr": 0.3055555555555555
+          }
+        }
+      }
+    }
+  },
+  {
+    "method": "sparse",
+    "k": 5,
+    "latency_ms_p50": 1.614999957382679,
+    "latency_ms_p95": 2.6671334635466337,
+    "styles": {
+      "literal": {
+        "n": 200,
+        "hit_rate": 0.99,
+        "mrr": 0.9179999999999999,
+        "hit_rate_doc": 1.0,
+        "mrr_doc": 0.9711666666666666,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 1.0,
+            "mrr": 0.9833333333333333
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 1.0,
+            "mrr": 0.9833333333333333
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.9789473684210527,
+            "mrr": 0.8484210526315789
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 1.0,
+            "mrr": 0.9666666666666667
+          }
+        }
+      },
+      "artist": {
+        "n": 200,
+        "hit_rate": 0.55,
+        "mrr": 0.42458333333333337,
+        "hit_rate_doc": 0.605,
+        "mrr_doc": 0.457,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 0.9,
+            "mrr": 0.7733333333333333
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 0.75,
+            "mrr": 0.6024999999999999
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.30526315789473685,
+            "mrr": 0.21
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 0.6,
+            "mrr": 0.3744444444444444
+          }
+        }
+      }
+    }
+  },
+  {
+    "method": "hybrid",
+    "k": 5,
+    "latency_ms_p50": 19.57725000102073,
+    "latency_ms_p95": 27.46071241563186,
+    "styles": {
+      "literal": {
+        "n": 200,
+        "hit_rate": 0.99,
+        "mrr": 0.9225,
+        "hit_rate_doc": 0.995,
+        "mrr_doc": 0.9616666666666667,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 1.0,
+            "mrr": 1.0
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 1.0,
+            "mrr": 0.9833333333333333
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.9789473684210527,
+            "mrr": 0.8473684210526315
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 1.0,
+            "mrr": 1.0
+          }
+        }
+      },
+      "artist": {
+        "n": 200,
+        "hit_rate": 0.56,
+        "mrr": 0.45891666666666664,
+        "hit_rate_doc": 0.63,
+        "mrr_doc": 0.5125833333333333,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 0.9333333333333333,
+            "mrr": 0.75
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 0.8166666666666667,
+            "mrr": 0.745
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.28421052631578947,
+            "mrr": 0.18824561403508772
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 0.5333333333333333,
+            "mrr": 0.44666666666666666
+          }
+        }
+      }
+    }
+  },
+  {
+    "method": "hybrid_rerank",
+    "k": 5,
+    "latency_ms_p50": 3878.967063035816,
+    "latency_ms_p95": 5754.018451913726,
+    "styles": {
+      "literal": {
+        "n": 200,
+        "hit_rate": 0.98,
+        "mrr": 0.9291666666666667,
+        "hit_rate_doc": 0.99,
+        "mrr_doc": 0.965,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 1.0,
+            "mrr": 0.9833333333333333
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 0.9833333333333333,
+            "mrr": 0.9625
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.968421052631579,
+            "mrr": 0.8798245614035087
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 1.0,
+            "mrr": 1.0
+          }
+        }
+      },
+      "artist": {
+        "n": 200,
+        "hit_rate": 0.545,
+        "mrr": 0.43833333333333335,
+        "hit_rate_doc": 0.6,
+        "mrr_doc": 0.49041666666666667,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 0.9,
+            "mrr": 0.7844444444444445
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 0.7,
+            "mrr": 0.5836111111111111
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.28421052631578947,
+            "mrr": 0.18719298245614033
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 0.8666666666666667,
+            "mrr": 0.7555555555555556
+          }
+        }
+      }
+    }
+  },
+  {
+    "method": "rewrite_hybrid",
+    "k": 5,
+    "latency_ms_p50": 30.030729016289115,
+    "latency_ms_p95": 43.30068752169609,
+    "styles": {
+      "literal": {
+        "n": 200,
+        "hit_rate": 0.98,
+        "mrr": 0.871,
+        "hit_rate_doc": 0.995,
+        "mrr_doc": 0.92875,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 1.0,
+            "mrr": 0.95
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 1.0,
+            "mrr": 0.9472222222222223
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.9578947368421052,
+            "mrr": 0.7775438596491228
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 1.0,
+            "mrr": 1.0
+          }
+        }
+      },
+      "artist": {
+        "n": 200,
+        "hit_rate": 0.59,
+        "mrr": 0.45116666666666666,
+        "hit_rate_doc": 0.645,
+        "mrr_doc": 0.49774999999999997,
+        "by_source": {
+          "conservation_literature": {
+            "n": 30,
+            "hit_rate": 0.9,
+            "mrr": 0.7083333333333334
+          },
+          "materials_science": {
+            "n": 60,
+            "hit_rate": 0.8,
+            "mrr": 0.7200000000000001
+          },
+          "manufacturer_datasheet": {
+            "n": 95,
+            "hit_rate": 0.3473684210526316,
+            "mrr": 0.19421052631578947
+          },
+          "collection_precedent": {
+            "n": 15,
+            "hit_rate": 0.6666666666666666,
+            "mrr": 0.4888888888888889
+          }
+        }
+      }
+    }
+  }
+]

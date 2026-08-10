@@ -1,0 +1,50 @@
+{
+  "summary": {
+    "plain": {
+      "n": 25,
+      "grounded": 4.68,
+      "source_discrimination": 3.72,
+      "handles_conflict": 4.04,
+      "usable": 4.28,
+      "unsupported_claims_per_answer": 0.76,
+      "citations_per_answer": 0.44,
+      "answers_with_fabricated_citation": 0,
+      "answers_with_stale_citation": 0
+    },
+    "sourced": {
+      "n": 25,
+      "grounded": 4.68,
+      "source_discrimination": 4.28,
+      "handles_conflict": 4.08,
+      "usable": 4.28,
+      "unsupported_claims_per_answer": 0.88,
+      "citations_per_answer": 0.96,
+      "answers_with_fabricated_citation": 0,
+      "answers_with_stale_citation": 0
+    },
+    "arbitrated": {
+      "n": 25,
+      "grounded": 4.84,
+      "source_discrimination": 4.72,
+      "handles_conflict": 4.44,
+      "usable": 4.12,
+      "unsupported_claims_per_answer": 1.08,
+      "citations_per_answer": 1.8,
+      "answers_with_fabricated_citation": 0,
+      "answers_with_stale_citation": 0
+    },
+    "no_context": {
+      "n": 24,
+      "grounded": 1.75,
+      "source_discrimination": 1.125,
+      "handles_conflict": 1.5,
+      "usable": 2.8333333333333335,
+      "unsupported_claims_per_answer": 9.208333333333334,
+      "citations_per_answer": 0.0,
+      "answers_with_fabricated_citation": 0,
+      "answers_with_stale_citation": 0
+    }
+  },
+  "n_questions": 25,
+  "k": 8
+}

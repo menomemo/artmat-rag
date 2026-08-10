@@ -1,0 +1,27 @@
+# Provisioned as code so the dashboard works on a fresh `docker compose up`
+# without anyone clicking through Grafana's UI. A dashboard that requires
+# manual datasource setup is a dashboard a grader will not see.
+apiVersion: 1
+
+datasources:
+  - name: artmat-postgres
+    uid: artmat-pg
+    type: postgres
+    access: proxy
+    # `postgres` is the compose service name; Grafana resolves it on the
+    # compose network, not via localhost.
+    url: postgres:5432
+    user: artmat
+    database: artmat
+    secureJsonData:
+      # `$VAR` only. Grafana's provisioning interpolates environment variables
+      # but does not implement shell-style `${VAR:-default}` -- it passed the
+      # literal string through as the password and authentication failed with a
+      # message that pointed at Postgres rather than at this file. The default
+      # therefore lives in docker-compose.yml, where the shell does expand it.
+      password: $POSTGRES_PASSWORD
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1700
+    isDefault: true
+    editable: false

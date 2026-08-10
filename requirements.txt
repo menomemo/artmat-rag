@@ -1,0 +1,18 @@
+# Exact versions, not ranges. A reproducibility section that says ">=" is
+# describing a family of environments, only one of which was tested.
+#
+# Two of these are pinned for reasons worth stating:
+#   anthropic 0.121 -- 0.75 has no `output_config`, so every structured-output
+#     call in eval/ and rag/rewrite.py silently fails to exist.
+#   qdrant-client 1.19 -- removed the `set_model` / `client.add` fastembed
+#     helper in favour of `models.Document`; rag/index.py uses the latter.
+anthropic==0.121.0
+qdrant-client==1.19.0
+fastembed==0.8.0
+onnxruntime==1.28.0
+psycopg[binary]==3.3.4
+streamlit==1.61.1
+httpx==0.28.1
+selectolax==0.3.27
+tenacity==9.1.2
+python-dotenv==1.2.2
