@@ -16,10 +16,30 @@ menu and it just redraws on save. A syntax error shows up as a red traceback on
 the page instead of a crash, so you can fix it and save again without
 restarting.
 
-One exception, and it will confuse you once: `make ui` must be restarted if you
-edit anything under `rag/` or `app/db.py`. Streamlit reloads the script but not
-modules it has already imported, so a changed prompt in `rag/generate.py` will
-appear to have no effect. Restart, then it works.
+One exception, and it will confuse you once: **editing anything under `rag/`
+requires restarting `make ui`.** A changed prompt in `rag/generate.py` will
+appear to have no effect — the page redraws, the widgets flicker, and the old
+text is still there. Verified by editing a string that the sidebar renders and
+forcing two reruns: still stale.
+
+The reason is worth knowing, because "Streamlit doesn't reload imports" is the
+wrong explanation and would leave you unable to predict the next case. Streamlit
+*does* evict changed local modules from `sys.modules` — but only for modules it
+considers local, and it decides that by the **main script's own directory**
+(`local_sources_watcher.py`: `self._script_folder = os.path.dirname(main_script_path)`).
+The main script is `app/main.py`, so the watched territory is `app/`. `rag/` is a
+sibling directory, reachable only because of the `sys.path.insert` at the top of
+`main.py` — and to the watcher that makes it indistinguishable from a package in
+site-packages. It isn't watched, so it is never evicted, so the import cache
+keeps serving the old module.
+
+That is a cost of the `sys.path.insert`, which buys the app the ability to start
+from any working directory. Worth it, but the price is this:
+
+- edit `app/main.py`, `app/db.py`, `app/secrets.py` → **live on save**
+- edit anything under `rag/` → **restart required**
+- change `bootstrap()` itself → restart, and note that `@st.cache_resource`
+  means it would not re-run even within a live session
 
 ## What is where
 
