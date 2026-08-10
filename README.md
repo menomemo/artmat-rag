@@ -451,6 +451,39 @@ generation, and the Opus judging pass.
 
 ---
 
+## Deployment
+
+Runs in two places from one codebase: against the `docker-compose.yml` stack
+locally, and against managed equivalents in the cloud — Streamlit Community
+Cloud for the UI, Qdrant Cloud for the vectors, Neon for the query log. There is
+no production branch and no environment flag. The difference is four environment
+variables, which means the deployed configuration is one you can run on your own
+machine and actually test.
+
+Two design notes, both in [DEPLOY.md](DEPLOY.md) with the full procedure:
+
+- **Grafana is deliberately not hosted.** Publishing an anonymous-viewer
+  dashboard over the query log would publish every question anyone typed. It
+  runs locally, pointed at the production database by one variable, and reads
+  the same rows.
+- **Configuration is read at call time, not import time.** `app/db.py` used to
+  bind the DSN into function defaults at import; locally that is invisible,
+  because `.env` loads first. On Streamlit Cloud, where secrets arrive through
+  `st.secrets` rather than the environment, whichever module imported first
+  would freeze the localhost default and the deployed app would log nowhere,
+  quietly. `app/secrets.py` bridges the two, and one file — not the whole rag
+  package — is the one that knows Streamlit exists.
+
+Logging is allowed to fail without taking the answer with it: a managed Postgres
+can be asleep, and losing a log row is not a reason to refuse a question. When
+it happens the page says monitoring is degraded and disables the feedback
+buttons, rather than recording feedback against a row that was never written.
+
+`Dockerfile` builds the same app as a container for anywhere that takes one,
+with both embedding models baked in so there is no cold-start download.
+
+---
+
 ## Known limitations
 
 Stated because a system that reports only its wins has not been evaluated.
