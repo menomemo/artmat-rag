@@ -237,9 +237,23 @@ for col, example in zip(cols, EXAMPLES):
     if col.button(example[:34] + "…", use_container_width=True, help=example):
         st.session_state.question = example
 
+# `key=`, not `value=`. With `value=st.session_state.question` and no key, the
+# widget is rebuilt from that variable on every rerun -- and a rerun happens on
+# any interaction at all, including the ⌘+Enter that the text area itself
+# advertises. Typed text that had not yet been submitted was silently wiped:
+# nudge the slider mid-question and the question is gone.
+#
+# It survived local testing because clicking Ask sends the widget's current
+# value in the same message that triggers the rerun, so the one path that was
+# exercised by hand happened to be the one path that worked. It showed up on
+# the deployed app, where latency leaves room for a rerun to land in between.
+#
+# `key="question"` binds the widget to session_state instead: Streamlit owns
+# the value, reruns preserve it, and the example buttons above still work
+# because they assign to the same key before this line runs.
 question = st.text_area(
     "Your question",
-    value=st.session_state.question,
+    key="question",
     placeholder="Describe what you are trying to make, avoid, or fix.",
     height=88,
 )

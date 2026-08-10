@@ -85,6 +85,14 @@ pinned in `requirements.txt`, and pinning a version that has no wheel for the
 interpreter the platform happens to default to is how a reproducible build
 becomes a ten-minute source compile that then fails.
 
+A local `.streamlit/secrets.toml` **shadows `.env`**, and it does so silently.
+`app/secrets.py` runs before `rag.env`, and `rag.env` loads `.env` with
+`override=False` — so anything present in a local secrets file wins. That is
+correct for the deployed app and a trap on a laptop: a secrets file left behind
+after copying its contents into the console will keep pointing your local runs
+at cloud services, with whatever key it held at the time. Copy it, paste it,
+delete it.
+
 The secrets box is the only place any credential is typed. `app/secrets.py`
 copies the known names into `os.environ` with `setdefault`, so the rest of the
 code keeps reading the environment and stays deployable anywhere else.
