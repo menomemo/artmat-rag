@@ -3,67 +3,65 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Long Look — artmat</title>
+<title>The Book of Long Looks — artmat</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-state="closed">
 
-<!-- Everything visual is drawn here. No images: the grain, the haze, the
-     motes and the axis are all generated, so the page weighs what its text
-     weighs and looks the same on any screen density. -->
-<canvas id="field" aria-hidden="true"></canvas>
+<!-- Atmosphere only: an overexposed empty room, generated. Nothing here is an
+     image, so the page weighs what its text weighs. -->
+<canvas id="air" aria-hidden="true"></canvas>
 
-<!-- The horizon. Text scrolls *into* this and dissolves rather than sliding
-     under a hard edge, which is the difference between a page with a footer
-     and a place with a distance. -->
-<div id="horizon" aria-hidden="true"></div>
-<canvas id="band" aria-hidden="true"></canvas>
+<!-- The book floats while it is closed, because a closed book is an invitation
+     and an invitation should be an object. It stops floating the moment it
+     opens: from then on it is a surface you write on, and a surface that
+     bobs is a surface you cannot use. -->
+<div id="stage">
+  <div id="book">
+    <div id="cover" role="button" tabindex="0"
+         aria-label="Open the book">
+      <span class="emboss">the book of<br>long looks</span>
+    </div>
 
-<main>
-  <header>
-    <h1>The Long Look</h1>
-    <p class="strap">
-      Four kinds of source answer questions about making things.
-      They have been watching for <em>very different lengths of time</em>.
-    </p>
-  </header>
+    <div id="spread" aria-hidden="true">
+      <div class="page left">
+        <div class="page-inner">
+          <form id="ask" autocomplete="off">
+            <label for="q" class="sr">Your question</label>
+            <input id="q" type="text" maxlength="2000"
+                   placeholder="write your question here">
+            <button type="submit" id="go" aria-label="Let the ink sink">↓</button>
+          </form>
 
-  <form id="ask" autocomplete="off">
-    <input id="q" type="text" maxlength="2000"
-           placeholder="what are you trying to make, avoid, or fix"
-           aria-label="Your question">
-    <button type="submit" id="go">ask</button>
-  </form>
+          <p id="rewrite" hidden></p>
 
-  <ul id="examples">
-    <li><button type="button">will my cast resin sculpture go yellow outdoors</button></li>
-    <li><button type="button">how long can I work with the silicone before it sets</button></li>
-    <li><button type="button">cast aluminium or stainless steel for a piece by the sea</button></li>
-  </ul>
+          <ul id="examples">
+            <li><button type="button">will my cast resin sculpture go yellow outdoors</button></li>
+            <li><button type="button">how long can I work with the silicone before it sets</button></li>
+            <li><button type="button">cast aluminium or stainless steel for a piece by the sea</button></li>
+          </ul>
 
-  <!-- The rewrite is shown before a single answer token arrives. It is where a
-       wrong answer usually starts, and seeing it while you wait means you can
-       abandon a bad search instead of reading a paragraph built on one. -->
-  <p id="rewrite" hidden></p>
+          <!-- The retrieved passages, pasted in like slips in a research
+               notebook. Each is written in the ink of its own source, and the
+               ink is aged by how long that source has been watching. -->
+          <div id="slips"></div>
+        </div>
+      </div>
 
-  <section id="axis-legend" hidden>
-    <span data-layer="manufacturer_datasheet">manufacturer · 500 hours</span>
-    <span data-layer="materials_science">materials science · months</span>
-    <span data-layer="conservation_literature">conservation · 15 years</span>
-    <span data-layer="collection_precedent">collection · 60 years</span>
-  </section>
+      <div class="page right">
+        <div class="page-inner">
+          <article id="answer"></article>
+          <p id="meta" hidden></p>
+          <p id="error" hidden></p>
+        </div>
+      </div>
 
-  <article id="answer" hidden></article>
+      <div id="gutter" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
 
-  <p id="meta" hidden></p>
-
-  <section id="passages" hidden>
-    <h2>what it was built from</h2>
-    <div id="passage-list"></div>
-  </section>
-
-  <p id="error" hidden></p>
-</main>
+<p id="hint">click the book</p>
 
 <script src="app.js"></script>
 </body>

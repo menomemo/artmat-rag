@@ -1,335 +1,387 @@
-/* Bleached liminal, not dark VHS.
-
-   Both belong to the same family, and the pale one is the right one here
-   because of what the corpus is about. Every question this system answers is
-   ultimately about something losing its colour: resin yellowing, pigment
-   fading, concrete efflorescing, silicone chalking. A page that starts
-   overexposed and drifts toward amber as you look further into time is not a
-   filter laid over the content -- it is the content.
-
-   So the palette is a time axis. Cold bleached white is hour zero. Amber is
-   sixty years. Nothing here is decorative in a way the material does not
-   already justify. */
+/* The book.
+ *
+ * Ink is the whole idea, and it replaced an earlier one that failed for a
+ * reason worth writing down. The first version encoded a source's evidence
+ * horizon as a coloured dot on a logarithmic axis. It was accurate and nobody
+ * could read it: you had to learn the legend, then learn that the axis was
+ * logarithmic, then discover that hovering a passage lit its dot. Three things
+ * to learn before the picture said anything.
+ *
+ * Ink age needs none of that. Everyone already knows that fresh writing is wet
+ * and black and that old writing has gone brown and soft at the edges. So the
+ * same fact -- how long this kind of source has actually been watching -- is
+ * carried by something a reader decodes without being told. It is also true:
+ * iron gall ink really does oxidise to brown.
+ *
+ *   manufacturer   500 hours   fresh, near-black, printed-looking
+ *   materials sci  months      blue-black, a lab notebook hand
+ *   conservation   15 years    brown, softened, bled slightly into the paper
+ *   precedent      60 years    faintest brown, nearly gone
+ */
 
 :root {
-  --paper: #f2efe6;
-  --haze: #fbfaf5;
-  --ink: #23201b;
-  --ink-soft: #6b655a;
-  --rule: #d9d3c4;
+  --room: #efece3;
+  --paper: #f6f2e7;
+  --paper-edge: #e6dfcc;
+  --board: #c8bda6;
 
-  /* The four layers, ordered by how long they have been watching. Hue walks
-     from cold to warm along that order; nothing else encodes it, so the axis
-     and the text agree without having to be told to. */
-  --t0: #8fa6ad;   /* manufacturer   — 500 hours,  cold */
-  --t1: #a8ac93;   /* materials sci  — months */
-  --t2: #c8a071;   /* conservation   — 15 years */
-  --t3: #b8763f;   /* precedent      — 60 years,  amber */
+  --ink-fresh: #1b1b1d;   /* manufacturer   */
+  --ink-lab:   #2c3a5c;   /* materials sci  */
+  --ink-aged:  #6b4a2a;   /* conservation   */
+  --ink-faint: #8f775c;   /* precedent      */
 
-  --measure: 34rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  /* Deliberately not inverted. The bleach is the idea; a dark variant would be
-     a different work. What dark mode gets is a slightly lower exposure so the
-     page is not a torch in a dim room. */
-  :root { --paper: #e6e2d8; --haze: #efece3; }
+  --hand: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
 
 * { box-sizing: border-box; }
-
-/* `hidden` is a UA rule of `display: none`, and any author rule that sets
-   `display` outranks it -- so `#axis-legend { display: flex }` made the
-   attribute do nothing and the legend appeared before there was anything to
-   label. The fix belongs here rather than in every flex rule, because the
-   next element with a display value would reintroduce it. */
 [hidden] { display: none !important; }
 
 html, body {
-  margin: 0;
-  padding: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  font-size: 17px;
-  line-height: 1.62;
+  margin: 0; padding: 0; height: 100%;
+  background: var(--room);
+  color: var(--ink-fresh);
+  font-family: var(--hand);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Four layers, and the order is the whole trick:
-     0  #field    atmosphere -- wash, overexposure, grain. Behind everything.
-     1  main      the text, in the DOM so it stays selectable and readable by
-                  a screen reader; an image of a paragraph is not a paragraph.
-     2  #horizon  a paper-coloured fade at the foot of the viewport. Text
-                  scrolls into it and dissolves.
-     3  #band     the time axis and its motes, drawn on top of that fade so
-                  they never end up behind a paragraph.
-
-   The first attempt had one canvas behind everything, which meant a scrolling
-   answer slid over the motes and the cold end of the axis -- the manufacturer
-   end, 500 hours, half the argument -- sat permanently behind the reading
-   column where nobody could see it. */
-#field, #band {
-  position: fixed;
-  width: 100%;
-  z-index: 0;
-  pointer-events: none;
+.sr {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
-#field { inset: 0; height: 100%; }
 
-#band {
-  left: 0;
-  bottom: 0;
-  height: 30vh;
-  min-height: 190px;
+#air { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+
+/* --- stage ---------------------------------------------------------------- */
+
+#stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  /* Perspective on the stage rather than the book, so the book's own
+     transforms compose without each one resetting the camera. */
+  perspective: 2400px;
+}
+
+#book {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 1400ms cubic-bezier(0.22, 0.61, 0.28, 1);
+  width: min(46vw, 30rem);
+  aspect-ratio: 3 / 4;
+}
+
+/* Closed: floating, small, an object across the room. */
+body[data-state="closed"] #book {
+  animation: float 7s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(-0.6rem) rotateX(6deg) rotateZ(-1.2deg); }
+  50%      { transform: translateY(0.6rem) rotateX(4deg) rotateZ(-0.4deg); }
+}
+
+/* Open: the book comes to you and stops moving. A surface that bobs is a
+   surface you cannot write on. */
+body[data-state="open"] #book,
+body[data-state="opening"] #book {
+  animation: none;
+  width: min(96vw, 78rem);
+  aspect-ratio: 16 / 10;
+  transform: none;
+}
+
+/* --- cover ---------------------------------------------------------------- */
+
+#cover {
+  position: absolute;
+  inset: 0;
   z-index: 3;
+  border-radius: 2px 6px 6px 2px;
+  background:
+    linear-gradient(105deg, rgba(255,255,255,0.16), rgba(0,0,0,0.12)),
+    var(--board);
+  box-shadow:
+    0 1.4rem 3rem rgba(90, 78, 58, 0.28),
+    inset 0 0 0 1px rgba(255,255,255,0.18);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transform-origin: left center;
+  transition: transform 1300ms cubic-bezier(0.3, 0.7, 0.2, 1),
+              box-shadow 1300ms ease, opacity 300ms ease 1000ms;
+  backface-visibility: hidden;
+}
+#cover:focus-visible { outline: 2px solid var(--ink-aged); outline-offset: 4px; }
+
+.emboss {
+  font-size: 0.82rem;
+  letter-spacing: 0.34em;
+  text-transform: lowercase;
+  text-align: center;
+  line-height: 2.1;
+  color: rgba(78, 64, 44, 0.55);
+  /* Debossed rather than printed: the highlight sits below the shadow, which
+     is what a stamped cover does to light. */
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35), 0 -1px 0 rgba(0,0,0,0.18);
 }
 
-#horizon {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  height: 34vh;
-  min-height: 210px;
+body[data-state="opening"] #cover,
+body[data-state="open"] #cover {
+  transform: rotateY(-168deg);
+  box-shadow: 0 0.4rem 2rem rgba(90, 78, 58, 0.12);
+}
+body[data-state="open"] #cover { opacity: 0; pointer-events: none; }
+
+/* --- spread --------------------------------------------------------------- */
+
+#spread {
+  position: absolute;
+  inset: 0;
   z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  opacity: 0;
+  transition: opacity 700ms ease 500ms;
+  border-radius: 3px;
+  box-shadow: 0 1.6rem 4rem rgba(90, 78, 58, 0.22);
+  overflow: hidden;
+}
+body[data-state="opening"] #spread,
+body[data-state="open"] #spread { opacity: 1; }
+body[data-state="open"] #spread { aria-hidden: false; }
+
+.page {
+  position: relative;
+  background: var(--paper);
+  overflow: hidden;
+}
+.page.left  { box-shadow: inset -2.5rem 0 3rem -2.5rem rgba(120, 100, 70, 0.35); }
+.page.right { box-shadow: inset  2.5rem 0 3rem -2.5rem rgba(120, 100, 70, 0.35); }
+
+.page-inner {
+  position: absolute;
+  inset: 0;
+  padding: clamp(1.5rem, 3.4vw, 3.2rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140,120,90,0.35) transparent;
+}
+.page-inner::-webkit-scrollbar { width: 6px; }
+.page-inner::-webkit-scrollbar-thumb {
+  background: rgba(140,120,90,0.3); border-radius: 3px;
+}
+
+/* The gutter is a shadow, not a line. A drawn line reads as two pages side by
+   side; a shadow reads as one sheet folded. */
+#gutter {
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 5rem;
+  margin-left: -2.5rem;
   pointer-events: none;
   background: linear-gradient(
-    to bottom,
-    rgba(242, 239, 230, 0) 0%,
-    rgba(242, 239, 230, 0.72) 26%,
-    rgba(242, 239, 230, 0.95) 52%,
-    rgba(242, 239, 230, 1) 100%
+    to right,
+    rgba(120,100,70,0) 0%,
+    rgba(120,100,70,0.10) 38%,
+    rgba(90,74,48,0.20) 50%,
+    rgba(120,100,70,0.10) 62%,
+    rgba(120,100,70,0) 100%
   );
 }
 
-main {
-  position: relative;
-  z-index: 1;
-  max-width: var(--measure);
-  margin: 0 auto;
-  padding: 14vh 2.5rem 8rem;
-
-  /* A light veil is still worth keeping over the atmosphere layer -- the
-     overexposed band drifts under the text and a paragraph crossing it loses
-     a little contrast. Much weaker than before, because the motes no longer
-     live behind here. */
-  background: rgba(250, 248, 242, 0.55);
-  box-shadow: 0 0 4rem 2.5rem rgba(250, 248, 242, 0.55);
-
-  /* Room to scroll past the horizon so the last paragraph is readable above
-     the fade rather than dissolving in it. */
-  padding-bottom: 46vh;
-}
-
-header h1 {
-  font-size: clamp(2.4rem, 7vw, 3.6rem);
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  margin: 0 0 0.6rem;
-}
-
-.strap {
-  margin: 0 0 3rem;
-  color: var(--ink-soft);
-  max-width: 26rem;
-}
-.strap em { font-style: italic; color: var(--ink); }
-
-/* --- ask ------------------------------------------------------------------ */
+/* --- writing -------------------------------------------------------------- */
 
 form#ask {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.6rem;
   align-items: baseline;
-  border-bottom: 1px solid var(--ink);
-  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(120, 100, 70, 0.28);
+  padding-bottom: 0.35rem;
 }
 
 #q {
   flex: 1;
-  border: 0;
-  background: transparent;
+  border: 0; background: transparent;
   font: inherit;
-  font-size: 1.15rem;
-  color: var(--ink);
-  padding: 0.2rem 0;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  color: var(--ink-fresh);
+  padding: 0.15rem 0;
 }
 #q:focus { outline: none; }
-#q::placeholder { color: #a9a294; }
+#q::placeholder { color: rgba(110, 92, 66, 0.42); }
+
+/* Wet ink: what you have written and not yet committed sits slightly proud of
+   the paper and catches light. It is the only thing on either page that is
+   not yet absorbed. */
+#q, #q::placeholder { transition: color 300ms ease; }
+body[data-wet="1"] #q {
+  text-shadow: 0 0 0.6px rgba(0,0,0,0.55), 0 1px 1.5px rgba(40,40,60,0.25);
+}
 
 #go {
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 0.95rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  cursor: pointer;
-  padding: 0.2rem 0;
-  transition: color 160ms ease;
+  border: 0; background: transparent;
+  font: inherit; font-size: 1.1rem;
+  color: rgba(110, 92, 66, 0.5);
+  cursor: pointer; padding: 0 0.2rem;
+  transition: color 200ms ease, transform 200ms ease;
 }
-#go:hover, #go:focus-visible { color: var(--ink); outline: none; }
-#go[disabled] { opacity: 0.35; cursor: default; }
-
-#examples {
-  list-style: none;
-  margin: 0.9rem 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.1rem;
-}
-#examples button {
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 0.86rem;
-  color: #9a9384;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
-  transition: color 160ms ease;
-}
-#examples button:hover { color: var(--ink-soft); }
-
-/* --- rewrite -------------------------------------------------------------- */
+#go:hover { color: var(--ink-fresh); transform: translateY(1px); }
+#go[disabled] { opacity: 0.3; cursor: default; }
 
 #rewrite {
-  margin: 2.4rem 0 0;
-  font-size: 0.94rem;
-  color: var(--ink-soft);
-  min-height: 1.6em;
+  margin: 0.9rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(90, 74, 52, 0.75);
+  min-height: 1.4em;
 }
 #rewrite .was {
-  /* The original question does not disappear when it is rewritten. It stays,
-     struck through and faded, because a system that quietly restates what you
-     asked and then answers its own version of it is the thing this project
-     exists to argue against. */
   text-decoration: line-through;
   text-decoration-thickness: 1px;
-  opacity: 0.45;
+  opacity: 0.4;
 }
-#rewrite .now { color: var(--ink); }
 
-/* --- legend --------------------------------------------------------------- */
-
-#axis-legend {
-  margin: 3.5rem 0 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.4rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  color: var(--ink-soft);
+#examples {
+  list-style: none; margin: 1.4rem 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.45rem;
 }
-#axis-legend span::before {
-  content: "";
-  display: inline-block;
-  width: 0.5rem; height: 0.5rem;
-  border-radius: 50%;
-  margin-right: 0.45rem;
-  vertical-align: 0.05em;
+#examples button {
+  border: 0; background: transparent; font: inherit;
+  font-size: 0.82rem; text-align: left; padding: 0;
+  color: rgba(110, 92, 66, 0.55);
+  cursor: pointer; transition: color 180ms ease;
 }
-#axis-legend [data-layer="manufacturer_datasheet"]::before  { background: var(--t0); }
-#axis-legend [data-layer="materials_science"]::before       { background: var(--t1); }
-#axis-legend [data-layer="conservation_literature"]::before { background: var(--t2); }
-#axis-legend [data-layer="collection_precedent"]::before    { background: var(--t3); }
-#axis-legend span.dim { opacity: 0.28; }
+#examples button:hover { color: var(--ink-aged); }
+body[data-asked="1"] #examples { display: none; }
 
-/* --- answer --------------------------------------------------------------- */
+/* --- slips ---------------------------------------------------------------- */
 
-#answer {
-  margin: 2.5rem 0 0;
-  font-size: 1.06rem;
+#slips { margin-top: 1.8rem; }
+
+.slip {
+  margin-bottom: 0.9rem;
+  padding: 0.55rem 0 0.55rem 0.75rem;
+  border-left: 2px solid currentColor;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: bleed 900ms ease forwards;
 }
-#answer p { margin: 0 0 1.1rem; }
+@keyframes bleed { to { opacity: 1; transform: none; } }
+
+/* The four inks. Age is carried by hue, weight and blur together, because a
+   single channel reads as a palette and three read as time. */
+.slip[data-layer="manufacturer_datasheet"]  { color: var(--ink-fresh); }
+.slip[data-layer="materials_science"]       { color: var(--ink-lab); }
+.slip[data-layer="conservation_literature"] {
+  color: var(--ink-aged);
+  filter: blur(0.12px);
+}
+.slip[data-layer="collection_precedent"] {
+  color: var(--ink-faint);
+  filter: blur(0.25px);
+  opacity: 0.85;
+}
+.slip .who {
+  display: block;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+.slip .ttl { cursor: pointer; }
+.slip .full { margin-top: 0.5rem; opacity: 0.85; }
+.slip .cid {
+  display: block; margin-top: 0.4rem;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.62rem; opacity: 0.45;
+}
+
+/* --- the answer ----------------------------------------------------------- */
+
+#answer { font-size: clamp(0.92rem, 1.15vw, 1.02rem); }
+#answer p { margin: 0 0 0.95rem; }
+#answer p:first-child { margin-top: 0; }
 #answer strong { font-weight: 600; }
+
+/* Answer text is tinted by the source it names, using the attribution phrases
+   the `arbitrated` prompt already requires ("the manufacturer states", "a
+   conservation study found"). This is a heuristic over the model's own words,
+   not a claim from the retrieval layer -- so it is deliberately faint, and the
+   authoritative provenance stays the chunk ids on the slips. */
+#answer .src-manufacturer_datasheet  { color: var(--ink-fresh); }
+#answer .src-materials_science       { color: var(--ink-lab); }
+#answer .src-conservation_literature { color: var(--ink-aged); }
+#answer .src-collection_precedent    { color: var(--ink-faint); }
+
 #answer .cursor {
-  display: inline-block;
-  width: 0.5em;
-  border-bottom: 2px solid var(--ink);
+  display: inline-block; width: 0.45em;
+  border-bottom: 2px solid currentColor;
   animation: blink 1.1s steps(2, start) infinite;
 }
 @keyframes blink { 50% { opacity: 0; } }
 
 #meta {
-  margin: 1.8rem 0 0;
-  font-size: 0.76rem;
-  letter-spacing: 0.05em;
-  color: #a9a294;
+  margin-top: 1.6rem;
+  font-size: 0.68rem; letter-spacing: 0.06em;
+  color: rgba(110, 92, 66, 0.5);
   font-variant-numeric: tabular-nums;
-}
-
-/* --- passages ------------------------------------------------------------- */
-
-#passages { margin: 4rem 0 0; }
-#passages h2 {
-  font-size: 0.78rem;
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin: 0 0 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--rule);
-}
-
-.passage {
-  padding: 0.9rem 0 0.9rem 0.9rem;
-  border-left: 2px solid var(--rule);
-  margin-bottom: 0.4rem;
-  transition: border-color 200ms ease, background 200ms ease;
-}
-.passage[data-layer="manufacturer_datasheet"]  { border-left-color: var(--t0); }
-.passage[data-layer="materials_science"]       { border-left-color: var(--t1); }
-.passage[data-layer="conservation_literature"] { border-left-color: var(--t2); }
-.passage[data-layer="collection_precedent"]    { border-left-color: var(--t3); }
-.passage.lit { background: rgba(255,255,255,0.55); }
-
-.passage .head {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.82rem;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-.passage .horizon {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: #a9a294;
-}
-.passage .body {
-  margin-top: 0.6rem;
-  font-size: 0.92rem;
-  color: #3d3830;
-}
-.passage .body[hidden] { display: none; }
-.passage .cid {
-  display: block;
-  margin-top: 0.6rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.72rem;
-  color: #b3ac9d;
 }
 
 #error {
-  margin-top: 2rem;
-  padding: 0.9rem 1rem;
-  border-left: 2px solid #b8763f;
-  background: rgba(184,118,63,0.07);
-  font-size: 0.92rem;
+  margin-top: 1.2rem; padding: 0.7rem 0.9rem;
+  border-left: 2px solid var(--ink-aged);
+  background: rgba(107, 74, 42, 0.06);
+  font-size: 0.85rem; color: var(--ink-aged);
 }
 
-@media (max-width: 34rem) {
-  main { padding-top: 9vh; }
-  #examples { flex-direction: column; gap: 0.5rem; }
+/* --- hint ----------------------------------------------------------------- */
+
+#hint {
+  position: fixed;
+  left: 0; right: 0; bottom: 8vh;
+  z-index: 2;
+  text-align: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: lowercase;
+  color: rgba(110, 92, 66, 0.4);
+  animation: pulse 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 0.8; } }
+body:not([data-state="closed"]) #hint { opacity: 0; animation: none; transition: opacity 400ms; }
+
+@media (max-width: 48rem) {
+  /* One page at a time below tablet width. A two-page spread on a phone is
+     two unreadable columns, and the metaphor is not worth that. */
+  #spread { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  #gutter { display: none; }
+  .page.left  { box-shadow: inset 0 -2rem 2rem -2rem rgba(120,100,70,0.3); }
+  .page.right { box-shadow: inset 0  2rem 2rem -2rem rgba(120,100,70,0.3); }
+  body[data-state="open"] #book,
+  body[data-state="opening"] #book { aspect-ratio: 3 / 4.4; width: 94vw; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* The drift and the bloom are the whole idea, so they are not removed --
-     they are slowed to the point where nothing moves fast enough to be a
-     problem, and the blinking cursor stops entirely. */
+  #book, #cover, #spread { transition-duration: 1ms; }
+  body[data-state="closed"] #book { animation: none; }
+  #hint { animation: none; }
+  .slip { animation-duration: 1ms; }
   #answer .cursor { animation: none; }
+}
+
+/* The question, after it has been absorbed and come back up. Styled here
+   rather than inline in app.js so the ink stays in one file. */
+#asked-line {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  color: var(--ink-fresh);
+  opacity: 0.8;
 }

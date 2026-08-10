@@ -1,383 +1,283 @@
-/* The time field, and the client that feeds it.
+/* The book, and the client that fills it.
  *
- * The whole visual argument is one mapping: a passage's horizontal position is
- * how long its kind of source has actually been watching. A datasheet's
- * durability claim rests on 500 hours in a weathering cabinet and sits at the
- * left edge; a conservation report rests on an object examined after fifteen
- * years and sits far to the right. When an answer draws on both, you see the
- * span before you read a word of it -- and when every mote piles up in one
- * place, you can see that too, which is the more useful failure to notice.
+ * Three moments carry the whole thing, and each is a real physical event drawn
+ * rather than a fade:
  *
- * Everything is drawn procedurally. No images, no libraries: the grain, the
- * haze, the axis and the motes are code, so the page is a few kilobytes and
- * looks identical at any pixel density. That is also the Processing habit --
- * the drawing *is* the program, and a seeded field redraws the same way twice.
+ *   opening   the cover swings, once. Afterwards the book is a surface, and a
+ *             further question turns a page rather than reopening anything.
+ *             Repeating a ceremony turns it into friction.
+ *
+ *   sinking   what you wrote is absorbed. Not faded out -- pulled down into
+ *             the paper, spreading very slightly as it goes, the way ink
+ *             actually behaves on a fibrous sheet.
+ *
+ *   welling   the answer comes back up through the paper, blurred first and
+ *             resolving into letters, in the ink of whichever source speaks.
+ *
+ * This replaced a first version that plotted each source as a coloured dot on
+ * a logarithmic time axis. That version was accurate and unreadable: you had
+ * to learn a legend, then learn the axis was logarithmic, then discover that
+ * hovering a passage lit its dot -- three things to learn before the picture
+ * said anything. Ink age needs none of them. Everyone already knows that fresh
+ * writing is black and old writing has gone brown.
+ *
+ * Everything is generated: the room, the grain, the bleed. No images, no
+ * libraries, three files.
  */
 
 const API = window.ARTMAT_API || "http://127.0.0.1:8021";
 
-const LAYERS = [
-  "manufacturer_datasheet",
-  "materials_science",
-  "conservation_literature",
-  "collection_precedent",
-];
-
-const LAYER_LABEL = {
+const LAYER_NAME = {
   manufacturer_datasheet: "manufacturer",
   materials_science: "materials science",
   conservation_literature: "conservation",
-  collection_precedent: "collection precedent",
+  collection_precedent: "collection",
 };
 
-// Cold at hour zero, amber at sixty years. Same four values as the CSS custom
-// properties; duplicated rather than read back out of the stylesheet because
-// the canvas needs them as numbers on every frame and getComputedStyle in a
-// draw loop is a needless reflow.
-const LAYER_RGB = {
-  manufacturer_datasheet: [143, 166, 173],
-  materials_science: [168, 172, 147],
-  conservation_literature: [200, 160, 113],
-  collection_precedent: [184, 118, 63],
-};
+// How a source's own words give it away. The `arbitrated` prompt already
+// requires attribution in the sentence that makes the claim, so this reads the
+// model's phrasing rather than guessing at it. It is a heuristic and it is
+// allowed to miss: an untinted sentence just looks like ordinary ink, which is
+// the right failure. The chunk ids on the slips stay the provenance of record.
+const ATTRIBUTION = [
+  [/manufactur|data ?sheet|smooth-?on|the maker|vendor/i, "manufacturer_datasheet"],
+  [/conservation|conservator|restorer/i, "conservation_literature"],
+  [/collection|tate|precedent|holdings/i, "collection_precedent"],
+  [/study|studies|research|peer-reviewed|paper|literature|experiment/i, "materials_science"],
+];
 
-/* ---------- deterministic noise ------------------------------------------ */
+/* ---------- the room ------------------------------------------------------ */
 
-// A passage's jitter must not change between frames, and it must not change
-// between two people looking at the same answer. So position is derived from
-// the chunk id rather than from Math.random: the same passage lands in the
-// same place every time, which makes the picture a description of the data
-// rather than of when it happened to be drawn.
-function hash01(str, salt = 0) {
-  let h = 2166136261 ^ salt;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return ((h >>> 0) % 100000) / 100000;
-}
-
-/* ---------- the field ---------------------------------------------------- */
-
-const canvas = document.getElementById("field");
-const ctx = canvas.getContext("2d", { alpha: false });
-
-// The band is a second canvas stacked above the horizon fade, so the axis and
-// its motes are never occluded by a scrolling paragraph. It is transparent --
-// the fade beneath it is what supplies the paper.
-const band = document.getElementById("band");
-const bctx = band.getContext("2d");
-
-const HOUR = 1 / 8766; // in years
-const T_MIN = HOUR;    // one hour
-const T_MAX = 100;     // a century
-
-let W = 0, H = 0, DPR = 1;
-let BW = 0, BH = 0;
-let motes = [];
-let grain = null;
-let t0 = performance.now();
+const air = document.getElementById("air");
+const actx = air.getContext("2d", { alpha: false });
+let W = 0, H = 0, DPR = 1, grain = null;
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function resize() {
+function sizeAir() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = Math.floor(W * DPR);
-  canvas.height = Math.floor(H * DPR);
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-  const r = band.getBoundingClientRect();
-  BW = r.width; BH = r.height;
-  band.width = Math.floor(BW * DPR);
-  band.height = Math.floor(BH * DPR);
-  bctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
+  W = window.innerWidth; H = window.innerHeight;
+  air.width = Math.floor(W * DPR); air.height = Math.floor(H * DPR);
+  actx.setTransform(DPR, 0, 0, DPR, 0, 0);
   grain = null;
-  layout();
+  paintRoom();
 }
 
-// Log scale, because the interesting distances are ratios. On a linear axis
-// 500 hours and 6 months would be the same pixel and the entire left half of
-// the argument would collapse into the margin.
-function xOf(years) {
-  const t = Math.max(T_MIN, Math.min(T_MAX, years));
-  const f = Math.log(t / T_MIN) / Math.log(T_MAX / T_MIN);
-  return 0.08 * BW + f * 0.84 * BW;
+// Painted once per resize, not per frame. The room does not move, and a
+// requestAnimationFrame loop here would burn a core redrawing the same pixels.
+function paintRoom() {
+  const wash = actx.createLinearGradient(0, 0, W * 0.4, H);
+  wash.addColorStop(0, "#f3f0e8");
+  wash.addColorStop(1, "#e9e5da");
+  actx.fillStyle = wash;
+  actx.fillRect(0, 0, W, H);
+
+  const glow = actx.createRadialGradient(
+    W * 0.5, H * 0.34, 0, W * 0.5, H * 0.34, Math.max(W, H) * 0.7);
+  glow.addColorStop(0, "rgba(255,255,255,0.7)");
+  glow.addColorStop(0.5, "rgba(255,255,255,0.16)");
+  glow.addColorStop(1, "rgba(255,255,255,0)");
+  actx.fillStyle = glow;
+  actx.fillRect(0, 0, W, H);
+
+  if (!grain) grain = makeGrain();
+  actx.fillStyle = actx.createPattern(grain, "repeat");
+  actx.fillRect(0, 0, W, H);
 }
 
-function layout() {
-  for (const m of motes) {
-    m.x = xOf(m.years * (0.55 + 1.1 * hash01(m.id, 7)));
-    // Motes sit above the axis line inside the band, spread by a stable hash
-    // so two passages from the same layer do not stack into one dot.
-    m.baseY = BH * (0.18 + 0.44 * hash01(m.id, 13));
-  }
-}
-
-function setMotes(hits) {
-  motes = hits.map((h) => ({
-    id: h.chunk_id,
-    layer: h.source_type,
-    years: h.horizon_years || 1,
-    score: h.score,
-    born: performance.now(),
-    r: 3 + 9 * Math.min(1, h.score * 1.6),
-    phase: hash01(h.chunk_id, 29) * Math.PI * 2,
-    speed: 0.25 + 0.5 * hash01(h.chunk_id, 31),
-    lit: false,
-  }));
-  layout();
-}
-
-// Grain is generated once per resize and stamped, not recomputed per frame.
-// Per-frame noise costs a full-canvas putImageData every 16 ms and buys a
-// shimmer nobody asked for; a still grain reads as paper, which is the point.
 function makeGrain() {
   const g = document.createElement("canvas");
-  g.width = 220; g.height = 220;
+  g.width = g.height = 200;
   const gc = g.getContext("2d");
-  const img = gc.createImageData(220, 220);
+  const img = gc.createImageData(200, 200);
   for (let i = 0; i < img.data.length; i += 4) {
-    const v = 128 + (Math.random() - 0.5) * 42;
+    const v = 128 + (Math.random() - 0.5) * 46;
     img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 16;
+    img.data[i + 3] = 18;
   }
   gc.putImageData(img, 0, 0);
   return g;
 }
 
-function draw(now) {
-  const t = (now - t0) / 1000;
+window.addEventListener("resize", sizeAir);
+sizeAir();
 
-  // Base wash: bleached paper, very slightly warmer toward the right, because
-  // that is where the long time scales are and where everything eventually
-  // yellows.
-  const wash = ctx.createLinearGradient(0, 0, W, H);
-  wash.addColorStop(0, "#f4f1e9");
-  wash.addColorStop(0.62, "#f2efe6");
-  wash.addColorStop(1, "#efe8d9");
-  ctx.fillStyle = wash;
-  ctx.fillRect(0, 0, W, H);
+/* ---------- opening ------------------------------------------------------- */
 
-  // Overexposure: a soft blown-out band, drifting slowly. This is the one
-  // gesture that is purely atmospheric, and it earns its place by making the
-  // page feel lit from somewhere rather than filled with a colour.
-  const bandY = H * (0.42 + 0.06 * Math.sin(t * 0.06));
-  const glow = ctx.createRadialGradient(W * 0.5, bandY, 0, W * 0.5, bandY, Math.max(W, H) * 0.75);
-  glow.addColorStop(0, "rgba(255,255,255,0.62)");
-  glow.addColorStop(0.45, "rgba(255,255,255,0.18)");
-  glow.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
+const body = document.body;
+const cover = document.getElementById("cover");
+const input = document.getElementById("q");
 
-  if (!grain) grain = makeGrain();
-  const pat = ctx.createPattern(grain, "repeat");
-  ctx.fillStyle = pat;
-  ctx.fillRect(0, 0, W, H);
-
-  drawBand(t, now);
-  requestAnimationFrame(draw);
+function openBook() {
+  if (body.dataset.state !== "closed") return;
+  body.dataset.state = "opening";
+  document.getElementById("spread").setAttribute("aria-hidden", "false");
+  // The cover takes 1.3 s to swing. Focus lands when the page is actually
+  // there, not while it is still edge-on: a caret blinking on a surface the
+  // reader cannot see yet is what makes a thing feel like a mock-up.
+  setTimeout(() => {
+    body.dataset.state = "open";
+    input.focus();
+  }, reduced ? 20 : 1350);
 }
 
-function drawBand(t, now) {
-  bctx.clearRect(0, 0, BW, BH);
-  if (!motes.length) return;
+cover.addEventListener("click", openBook);
+cover.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBook(); }
+});
 
-  drawAxis(t);
-
-  for (const m of motes) {
-    const age = Math.min(1, (now - m.born) / 1400);
-    const ease = 1 - Math.pow(1 - age, 3);
-    const drift = reduced ? 0 : Math.sin(t * m.speed + m.phase) * 7;
-    const y = m.baseY + drift;
-    const rgb = LAYER_RGB[m.layer] || [150, 150, 150];
-    const r = m.r * ease * (m.lit ? 1.7 : 1);
-
-    // Bloom without a shadow filter: three passes at falling alpha. Cheaper
-    // than shadowBlur, and it keeps the halo tinted rather than grey.
-    for (let i = 3; i >= 1; i--) {
-      bctx.beginPath();
-      bctx.arc(m.x, y, r * i * 1.5, 0, Math.PI * 2);
-      bctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(m.lit ? 0.1 : 0.055) / i})`;
-      bctx.fill();
-    }
-
-    // A thread down to the axis. Without it a mote is a decorative dot; with
-    // it, the dot is standing at a position on a scale, which is the claim.
-    bctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.28 * ease})`;
-    bctx.lineWidth = 1;
-    bctx.beginPath();
-    bctx.moveTo(m.x, y + r);
-    bctx.lineTo(m.x, BH * 0.72);
-    bctx.stroke();
-
-    bctx.beginPath();
-    bctx.arc(m.x, y, r, 0, Math.PI * 2);
-    bctx.fillStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.5 + 0.4 * ease})`;
-    bctx.fill();
-  }
-}
-
-const TICKS = [
-  [500 * HOUR, "500 hours"],
-  [1, "1 year"],
-  [10, "10 years"],
-  [60, "60 years"],
-];
-
-function drawAxis(t) {
-  const y = BH * 0.72;
-  bctx.strokeStyle = "rgba(90,84,74,0.20)";
-  bctx.lineWidth = 1;
-  bctx.beginPath();
-  bctx.moveTo(0.06 * BW, y);
-  bctx.lineTo(0.94 * BW, y);
-  bctx.stroke();
-
-  bctx.font = "11px ui-monospace, Menlo, monospace";
-  bctx.fillStyle = "rgba(90,84,74,0.5)";
-  bctx.textAlign = "center";
-  for (const [years, label] of TICKS) {
-    const x = xOf(years);
-    bctx.beginPath();
-    bctx.moveTo(x, y - 4);
-    bctx.lineTo(x, y + 4);
-    bctx.stroke();
-    bctx.fillText(label, x, y + 20);
-  }
-  bctx.textAlign = "left";
-  bctx.fillStyle = "rgba(90,84,74,0.38)";
-  bctx.fillText("how long this kind of source has been watching", 0.06 * BW, y + 42);
-}
-
-window.addEventListener("resize", resize);
-resize();
-requestAnimationFrame(draw);
-
-/* ---------- the client --------------------------------------------------- */
+/* ---------- ink ----------------------------------------------------------- */
 
 const form = document.getElementById("ask");
-const input = document.getElementById("q");
 const go = document.getElementById("go");
 const rewriteEl = document.getElementById("rewrite");
-const legend = document.getElementById("axis-legend");
+const slipsEl = document.getElementById("slips");
 const answerEl = document.getElementById("answer");
 const metaEl = document.getElementById("meta");
-const passagesEl = document.getElementById("passages");
-const passageList = document.getElementById("passage-list");
 const errorEl = document.getElementById("error");
+
+input.addEventListener("input", () => {
+  body.dataset.wet = input.value.trim() ? "1" : "0";
+});
 
 document.querySelectorAll("#examples button").forEach((b) => {
   b.addEventListener("click", () => {
     input.value = b.textContent.trim();
+    body.dataset.wet = "1";
     input.focus();
   });
 });
 
-function show(el, on = true) { el.hidden = !on; }
-
-function reset() {
-  show(rewriteEl, false);
-  show(legend, false);
-  show(answerEl, false);
-  show(metaEl, false);
-  show(passagesEl, false);
-  show(errorEl, false);
-  answerEl.innerHTML = "";
-  passageList.innerHTML = "";
-  motes = [];
-}
-
-function renderRewrite(d) {
-  if (!d.used || d.rewritten === d.original) {
-    rewriteEl.innerHTML = `<span class="now">${escapeHtml(d.original)}</span>`;
-  } else {
-    rewriteEl.innerHTML =
-      `<span class="was">${escapeHtml(d.original)}</span> ` +
-      `<span class="now">${escapeHtml(d.rewritten)}</span>`;
-  }
-  show(rewriteEl);
-}
-
-function renderLegend(hits) {
-  const present = new Set(hits.map((h) => h.source_type));
-  legend.querySelectorAll("span").forEach((s) => {
-    s.classList.toggle("dim", !present.has(s.dataset.layer));
+/* The sink.
+ *
+ * Paper absorbing a word does two things at once: the word loses contrast and
+ * it spreads. Fading alone reads as a dissolve, blurring alone reads as a
+ * lens; doing both while the text also drops a few pixels is what makes it
+ * read as *into the page* rather than *off the screen*.
+ */
+function sink(el) {
+  return new Promise((resolve) => {
+    if (reduced) { resolve(); return; }
+    const start = performance.now();
+    const D = 900;
+    function step(now) {
+      const p = Math.min(1, (now - start) / D);
+      const e = p * p;
+      el.style.filter = `blur(${e * 2.6}px)`;
+      el.style.opacity = String(1 - e);
+      el.style.transform = `translateY(${e * 7}px)`;
+      el.style.letterSpacing = `${e * 0.06}em`;
+      if (p < 1) requestAnimationFrame(step);
+      else {
+        el.style.filter = ""; el.style.opacity = "";
+        el.style.transform = ""; el.style.letterSpacing = "";
+        resolve();
+      }
+    }
+    requestAnimationFrame(step);
   });
-  show(legend);
 }
 
-function renderPassages(hits) {
-  passageList.innerHTML = "";
-  for (const h of hits) {
-    const el = document.createElement("div");
-    el.className = "passage";
-    el.dataset.layer = h.source_type;
-    el.dataset.cid = h.chunk_id;
-    el.innerHTML =
-      `<div class="head"><span>${escapeHtml(h.title)}</span>` +
-      `<span class="horizon">${horizonLabel(h.horizon_years)}</span></div>` +
-      `<div class="body" hidden>${escapeHtml(h.text)}` +
-      `<span class="cid">${escapeHtml(h.chunk_id)}</span></div>`;
-
-    const body = el.querySelector(".body");
-    el.querySelector(".head").addEventListener("click", () => {
-      body.hidden = !body.hidden;
-    });
-    // Hovering a passage lights its mote. The link between the paragraph you
-    // are reading and the point on the axis it came from is the whole reason
-    // both are on screen at once; without it they are two lists.
-    el.addEventListener("mouseenter", () => setLit(h.chunk_id, true, el));
-    el.addEventListener("mouseleave", () => setLit(h.chunk_id, false, el));
-    passageList.appendChild(el);
-  }
-  show(passagesEl);
+/* The welling-up: text arrives blurred and slightly low, and resolves as if
+   absorbed from beneath. Applied per paragraph as each completes, so a long
+   answer surfaces in waves instead of shimmering as one block. */
+function well(el) {
+  if (reduced || !el) return;
+  el.animate(
+    [
+      { filter: "blur(3px)", opacity: 0, transform: "translateY(6px)" },
+      { filter: "blur(0px)", opacity: 1, transform: "none" },
+    ],
+    { duration: 850, easing: "cubic-bezier(0.2,0.7,0.3,1)", fill: "both" }
+  );
 }
 
-function setLit(cid, on, el) {
-  const m = motes.find((x) => x.id === cid);
-  if (m) m.lit = on;
-  el.classList.toggle("lit", on);
+/* ---------- rendering ----------------------------------------------------- */
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-function horizonLabel(years) {
-  if (years == null) return "";
-  if (years < 0.1) return `${Math.round(years * 8766)} hours`;
-  if (years < 1) return `${Math.round(years * 12)} months`;
-  return `${Math.round(years)} years`;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
+function whoSpeaks(sentence) {
+  for (const [re, layer] of ATTRIBUTION) if (re.test(sentence)) return layer;
+  return null;
 }
 
 // Markdown is not parsed. The model emits paragraphs and the occasional bold
-// run, and a full parser here would be a lot of surface area for two features
-// -- and a way to get raw HTML from a model onto the page. Text is escaped
-// first, then the two safe patterns are re-introduced.
+// run; a full parser would be a lot of surface area for two features, and a
+// way to get raw HTML from a model onto the page. Escape first, then put back
+// only the two patterns that are safe.
 function renderAnswer(text, streaming) {
-  const html = escapeHtml(text)
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .split(/\n{2,}/)
-    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
-    .join("");
+  const html = text.split(/\n{2,}/).map((para) => {
+    const inked = para.split(/(?<=[.!?])\s+/).map((s) => {
+      const layer = whoSpeaks(s);
+      const safe = esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      return layer ? `<span class="src-${layer}">${safe}</span>` : safe;
+    }).join(" ");
+    return `<p>${inked.replace(/\n/g, "<br>")}</p>`;
+  }).join("");
   answerEl.innerHTML = streaming ? html + '<span class="cursor"></span>' : html;
 }
+
+function renderSlips(hits) {
+  slipsEl.innerHTML = "";
+  hits.forEach((h, i) => {
+    const el = document.createElement("div");
+    el.className = "slip";
+    el.dataset.layer = h.source_type;
+    el.style.animationDelay = `${i * 90}ms`;
+    el.innerHTML =
+      `<span class="who">${esc(LAYER_NAME[h.source_type] || h.source_type)}` +
+      ` · ${esc(horizon(h.horizon_years))}</span>` +
+      `<span class="ttl">${esc(h.title)}</span>` +
+      `<div class="full" hidden>${esc(h.text)}` +
+      `<span class="cid">${esc(h.chunk_id)}</span></div>`;
+    const full = el.querySelector(".full");
+    el.querySelector(".ttl").addEventListener("click", () => {
+      full.hidden = !full.hidden;
+    });
+    slipsEl.appendChild(el);
+  });
+}
+
+// Said in words rather than plotted. "500 hours of testing" next to "15 years
+// of watching" is the same comparison the axis was making, and it needs no
+// legend to decode.
+function horizon(years) {
+  if (years == null) return "";
+  if (years < 0.1) return `${Math.round(years * 8766)} hours of testing`;
+  if (years < 1) return `${Math.round(years * 12)} months of testing`;
+  return `${Math.round(years)} years of watching`;
+}
+
+/* ---------- ask ----------------------------------------------------------- */
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = input.value.trim();
   if (!question) return;
 
-  reset();
   go.disabled = true;
-  go.textContent = "…";
+  body.dataset.asked = "1";
+  errorEl.hidden = true;
+  metaEl.hidden = true;
+  answerEl.innerHTML = "";
+  slipsEl.innerHTML = "";
 
-  let acc = "";
-  let scrolled = false;
+  // What you wrote goes down into the paper before anything comes back. The
+  // pause is not dead time: it is the only moment in the interaction when
+  // nothing is being shown, and it is what makes the answer feel drawn out of
+  // the book rather than printed onto it.
+  await sink(form);
+  const asked = document.createElement("p");
+  asked.id = "asked-line";
+  asked.textContent = question;
+  form.parentNode.insertBefore(asked, form);
+  input.value = "";
+  body.dataset.wet = "0";
+  well(asked);
+
+  let acc = "", paras = 0;
   try {
     const res = await fetch(`${API}/api/ask`, {
       method: "POST",
@@ -386,64 +286,60 @@ form.addEventListener("submit", async (e) => {
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 
-    // Hand-rolled SSE over fetch rather than EventSource, because EventSource
-    // cannot POST and the question does not belong in a URL.
+    // Hand-rolled SSE over fetch rather than EventSource, which cannot POST --
+    // and the question does not belong in a URL.
     const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    const dec = new TextDecoder();
+    let buf = "";
 
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      let idx;
-      while ((idx = buffer.indexOf("\n\n")) !== -1) {
-        const raw = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 2);
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) !== -1) {
+        const raw = buf.slice(0, i);
+        buf = buf.slice(i + 2);
         const ev = /^event: (.+)$/m.exec(raw);
         const dt = /^data: (.+)$/m.exec(raw);
         if (!ev || !dt) continue;
-        const data = JSON.parse(dt[1]);
+        const d = JSON.parse(dt[1]);
 
         if (ev[1] === "rewrite") {
-          renderRewrite(data);
+          rewriteEl.innerHTML = d.used && d.rewritten !== d.original
+            ? `<span class="was">${esc(d.original)}</span> ${esc(d.rewritten)}`
+            : esc(d.original);
+          rewriteEl.hidden = false;
+          well(rewriteEl);
         } else if (ev[1] === "hits") {
-          setMotes(data.hits);
-          renderLegend(data.hits);
-          renderPassages(data.hits);
+          renderSlips(d.hits);
         } else if (ev[1] === "token") {
-          acc += data.text;
-          show(answerEl);
+          acc += d.text;
           renderAnswer(acc, true);
-          // Once, on the first token. A short page puts the opening of the
-          // answer down inside the horizon fade, where it is dissolving into
-          // paper before it has been read -- the effect is right for text you
-          // have finished with and wrong for text that is still arriving.
-          if (!scrolled) {
-            scrolled = true;
-            rewriteEl.scrollIntoView({
-              behavior: reduced ? "auto" : "smooth",
-              block: "start",
-            });
+          const n = acc.split(/\n{2,}/).length;
+          if (n > paras) {
+            paras = n;
+            const ps = answerEl.querySelectorAll("p");
+            well(ps[ps.length - 2]);
           }
         } else if (ev[1] === "done") {
           renderAnswer(acc, false);
+          const ps = answerEl.querySelectorAll("p");
+          well(ps[ps.length - 1]);
           metaEl.textContent =
-            `${data.retrieval_ms} ms retrieval · ${data.generate_ms} ms generation · ` +
-            `${data.input_tokens.toLocaleString()} in / ${data.output_tokens.toLocaleString()} out · ` +
-            `$${data.cost_usd.toFixed(4)}`;
-          show(metaEl);
+            `${d.retrieval_ms} ms to find · ${d.generate_ms} ms to write · ` +
+            `$${d.cost_usd.toFixed(4)}`;
+          metaEl.hidden = false;
         } else if (ev[1] === "error") {
-          throw new Error(data.message);
+          throw new Error(d.message);
         }
       }
     }
   } catch (err) {
-    errorEl.textContent = `That did not work: ${err.message}`;
-    show(errorEl);
+    errorEl.textContent = `The page stayed blank: ${err.message}`;
+    errorEl.hidden = false;
   } finally {
     go.disabled = false;
-    go.textContent = "ask";
+    input.focus();
   }
 });
