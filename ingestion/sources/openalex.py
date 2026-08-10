@@ -30,12 +30,16 @@ import urllib.request
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
-USER_AGENT = (
-    "artmat-rag/0.1 (educational RAG project; +mailto:today_is_yihong@outlook.com)"
-)
 # OpenAlex asks callers to identify themselves via `mailto`; doing so puts the
-# request in their faster, more reliable "polite pool".
-MAILTO = "today_is_yihong@outlook.com"
+# request in their faster, more reliable "polite pool". Read from the
+# environment rather than hardcoded: a real address committed to a public
+# repository is an address in every scraper's corpus, and crawling etiquette
+# should not cost the person being polite their inbox. Unset, requests go
+# through anonymously -- slower, still allowed.
+MAILTO = os.environ.get("CONTACT_EMAIL", "")
+USER_AGENT = "artmat-rag/0.1 (educational RAG project" + (
+    f"; +mailto:{MAILTO})" if MAILTO else ")"
+)
 API = "https://api.openalex.org/works"
 
 # An API key lifts the daily allowance from $0.10 (anonymous) to $1.00, i.e.

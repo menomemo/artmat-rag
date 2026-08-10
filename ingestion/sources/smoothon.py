@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field, asdict
@@ -28,8 +29,11 @@ BASE = "https://www.smooth-on.com"
 
 # Contact address included per common crawling etiquette: a site owner who wants
 # us to stop should be able to reach us without having to block an IP range.
-USER_AGENT = (
-    "artmat-rag/0.1 (educational RAG project; +mailto:today_is_yihong@outlook.com)"
+# Read from the environment, because the same address hardcoded into a public
+# repository is one a scraper harvests long before a site owner ever needs it.
+CONTACT_EMAIL = os.environ.get("CONTACT_EMAIL", "")
+USER_AGENT = "artmat-rag/0.1 (educational RAG project" + (
+    f"; +mailto:{CONTACT_EMAIL})" if CONTACT_EMAIL else ")"
 )
 
 REQUEST_DELAY_S = 0.7
