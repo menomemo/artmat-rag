@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "artmat-ui",
-      "runtimeExecutable": ".venv/bin/streamlit",
-      "runtimeArgs": ["run", "app/main.py", "--server.port", "8501", "--server.headless", "true"],
-      "port": 8501
+      "name": "artmat-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5173", "--directory", "web"],
+      "port": 5173
     }
   ]
 }

@@ -451,6 +451,41 @@ generation, and the Opus judging pass.
 
 ---
 
+## A second front end
+
+`app/` is the graded reference implementation and does not change. `api/` and
+`web/` are a second front door onto the same `rag/` package — a FastAPI server
+that streams answers over Server-Sent Events, and a hand-written page that
+draws what the Streamlit app can only describe.
+
+The visual argument is one mapping. A passage's horizontal position is **how
+long its kind of source has actually been watching**: a datasheet's durability
+claim rests on 500 hours in a weathering cabinet and stands at the left edge; a
+conservation report rests on an object examined after fifteen years and stands
+far to the right. When an answer spans both, the span is visible before a word
+of it is read — and when every passage piles up at one position, that is
+visible too, which is the more useful thing to notice.
+
+The colour scale is the same axis. Cold at hour zero, amber at sixty years,
+because every question this corpus answers is finally about something losing
+its colour — resin yellowing, pigment fading, silicone chalking. The page
+yellows along with its subject.
+
+`EVIDENCE_HORIZON_YEARS` in `api/main.py` is an editorial claim, not a measured
+field, and it is written in one place so it can be disagreed with.
+
+```bash
+pip install -r requirements.txt -r requirements-api.txt
+uvicorn api.main:app --port 8021      # API
+python -m http.server 5173 -d web     # page
+```
+
+Nothing about retrieval or prompting lives in `api/` — if the two front ends
+ever answered the same question differently, the evaluation both rest on would
+be worthless.
+
+---
+
 ## Deployment
 
 **Live: <https://artmat-rag-ngpg5rtoak6ppesfbrhe68.streamlit.app>**

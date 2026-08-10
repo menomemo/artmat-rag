@@ -1,0 +1,10 @@
+# The HTTP front door, kept separate from requirements.txt on purpose.
+#
+# requirements.txt is what Streamlit Community Cloud installs, and it is the
+# reproducibility artefact the project is graded on. Adding a web framework
+# there would make every deploy of the reference implementation install a
+# server it never starts.
+#
+# Install both when running the API:  pip install -r requirements.txt -r requirements-api.txt
+fastapi==0.121.2
+uvicorn[standard]==0.41.0
