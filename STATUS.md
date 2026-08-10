@@ -296,9 +296,9 @@ damage is bounded; it is not free.
 - [x] Streamlit UI (streaming) + feedback capture
 - [x] Grafana dashboard (7 panels, all SQL verified)
 - [x] docker-compose, pinned versions, README, Makefile
-- [x] Cloud deploy — code + config + DEPLOY.md ready; two free-tier signups
-      (Qdrant Cloud, Neon) are the user's to make, then `make index` at the
-      cloud URL and connect the repo at share.streamlit.io
+- [x] Cloud deploy — live at artmat-rag-ngpg5rtoak6ppesfbrhe68.streamlit.app
+      Verified end to end from the public URL: retrieval from Qdrant Cloud
+      (eu-west-2, 4,115 points, green), generation, and a row in Neon.
 
 7. **Prompt caching silently did nothing.** The gate's screening brief is
    identical across ~2000 requests, so a `cache_control` marker on it looked

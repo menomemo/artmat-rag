@@ -453,6 +453,9 @@ generation, and the Opus judging pass.
 
 ## Deployment
 
+**Live: <https://artmat-rag-ngpg5rtoak6ppesfbrhe68.streamlit.app>**
+(Streamlit Community Cloud, Qdrant Cloud `eu-west-2`, Neon Postgres.)
+
 Runs in two places from one codebase: against the `docker-compose.yml` stack
 locally, and against managed equivalents in the cloud — Streamlit Community
 Cloud for the UI, Qdrant Cloud for the vectors, Neon for the query log. There is
