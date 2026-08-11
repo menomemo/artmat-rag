@@ -41,8 +41,9 @@ from rag.search import (
     MMR_CANDIDATES,
     MMR_RELEVANCE_HEAD,
     Hit,
+    SearchFilters,
+    _metadata_filter,
     _reranker,
-    _source_filter,
     candidates_from_points,
     diversify,
 )
@@ -157,6 +158,7 @@ def search_rewritten(
     rerank: bool = True,
     source_types: list[str] | None = None,
     diversify_results: bool = True,
+    filters: SearchFilters | None = None,
 ) -> list[Hit]:
     """Hybrid retrieval over the original and the rewrite together.
 
@@ -191,7 +193,7 @@ def search_rewritten(
             if rerank
             else min(CANDIDATES, max(limit, MMR_CANDIDATES))
         ),
-        query_filter=_source_filter(source_types),
+        query_filter=_metadata_filter(filters, source_types),
         with_payload=True,
         with_vectors=[DENSE] if diversity_active and not rerank else False,
     ).points

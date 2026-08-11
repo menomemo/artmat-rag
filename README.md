@@ -235,6 +235,41 @@ different member of the same relevant document/family. Median retrieval rose
 from 19 ms to 35 ms. The old `hybrid` method remains available as the control,
 so published comparisons still name the pipeline they measured.
 
+### Metadata filters
+
+Both front ends pass the same `SearchFilters` object into `rag/`. Filters are
+executed inside Qdrant before ranking: values within one field are ORed, while
+different fields are ANDed. The indexed dimensions are:
+
+| scope | fields | coverage |
+|---|---|---:|
+| all passages | `source_type`, `chunk_type` | 4,115 |
+| manufacturer | `category` (14 values) | 2,373 |
+| literature | `domain`, `year` | 1,727 |
+| collection precedent | `material` | 15 |
+
+FastAPI publishes the valid current values at `GET /api/filters`; `POST
+/api/ask` accepts them in a nested `filters` object. For example:
+
+```json
+{
+  "question": "what happens to stainless steel near the sea",
+  "filters": {
+    "source_types": ["materials_science", "conservation_literature"],
+    "domains": ["metals"],
+    "year_from": 2010,
+    "year_to": 2026
+  }
+}
+```
+
+A year condition only matches literature because datasheets and collection
+precedents do not carry publication years. The interface states this before a
+reader enables it. Permission filtering is deliberately absent: the corpus has
+no tenant, owner, or ACL metadata, so a permissions control would claim an
+isolation guarantee the index cannot enforce. Every applied filter is stored
+with the query log for monitoring and reproducibility.
+
 One Qdrant collection, dense and sparse vectors as named vectors on the same
 point, fused server-side by Reciprocal Rank Fusion. Both models run locally
 through fastembed, so re-indexing needs no API key.

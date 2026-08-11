@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS queries (
     cache_hit        BOOLEAN      NOT NULL DEFAULT FALSE,
     cache_source_query_id BIGINT REFERENCES queries(id) ON DELETE SET NULL,
     rewrite_terms    JSONB        NOT NULL DEFAULT '[]'::jsonb,
-    hits             JSONB        NOT NULL DEFAULT '[]'::jsonb
+    hits             JSONB        NOT NULL DEFAULT '[]'::jsonb,
+    filters          JSONB        NOT NULL DEFAULT '{}'::jsonb
 );
 
 -- CREATE TABLE IF NOT EXISTS does not add columns to an existing deployment.
@@ -86,6 +87,7 @@ ALTER TABLE queries ADD COLUMN IF NOT EXISTS cache_hit BOOLEAN NOT NULL DEFAULT 
 ALTER TABLE queries ADD COLUMN IF NOT EXISTS cache_source_query_id BIGINT REFERENCES queries(id) ON DELETE SET NULL;
 ALTER TABLE queries ADD COLUMN IF NOT EXISTS rewrite_terms JSONB NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE queries ADD COLUMN IF NOT EXISTS hits JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS filters JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE INDEX IF NOT EXISTS queries_asked_at_idx ON queries (asked_at DESC);
 CREATE INDEX IF NOT EXISTS queries_variant_idx  ON queries (variant);
@@ -152,7 +154,7 @@ def log_query(record: dict, url: str | None = None) -> int:
                 retrieval_ms, generate_ms, total_ms,
                 input_tokens, output_tokens, cost_usd, truncated, error,
                 cache_key, cache_namespace, cache_hit, cache_source_query_id,
-                rewrite_terms, hits
+                rewrite_terms, hits, filters
             ) VALUES (
                 %(question)s, %(rewritten)s, %(rewrite_used)s, %(variant)s,
                 %(method)s, %(answer)s, %(source_counts)s, %(chunk_ids)s,
@@ -160,7 +162,7 @@ def log_query(record: dict, url: str | None = None) -> int:
                 %(input_tokens)s, %(output_tokens)s, %(cost_usd)s,
                 %(truncated)s, %(error)s, %(cache_key)s, %(cache_namespace)s,
                 %(cache_hit)s, %(cache_source_query_id)s, %(rewrite_terms)s,
-                %(hits)s
+                %(hits)s, %(filters)s
             ) RETURNING id
             """,
             {
@@ -173,6 +175,7 @@ def log_query(record: dict, url: str | None = None) -> int:
                 "cache_source_query_id": record.get("cache_source_query_id"),
                 "rewrite_terms": json.dumps(record.get("rewrite_terms", [])),
                 "hits": json.dumps(record.get("hits", [])),
+                "filters": json.dumps(record.get("filters", {})),
             },
         ).fetchone()
         conn.commit()
