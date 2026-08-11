@@ -217,6 +217,24 @@ become a language filter by accident.**
 
 ## Retrieval
 
+### Production diversity: preserve the head, diversify the context
+
+The shipped retriever is `hybrid_mmr`. It preserves the first five hybrid
+results exactly, then fills the remaining slots of the eight-passage context
+with maximal marginal relevance over the dense vectors already stored in
+Qdrant. Manufacturer titles also receive a conservative series key: numeric
+grade and speed suffixes are removed (`Mold Star 15 SLOW` → `Mold Star`), while
+literature sources remain keyed by document rather than guessed into families.
+
+Measured over all 200 artist-style ground-truth questions at k=8, manufacturer
+family hit rate rose from **0.642 to 0.663**, the mean unique-family ratio rose
+from **0.722 to 0.778**, and questions with more than two results from one
+family fell from **52 to 19**. Document hit@8 stayed **0.685**; strict chunk
+hit@8 moved from 0.620 to 0.605 because three target chunks were replaced by a
+different member of the same relevant document/family. Median retrieval rose
+from 19 ms to 35 ms. The old `hybrid` method remains available as the control,
+so published comparisons still name the pipeline they measured.
+
 One Qdrant collection, dense and sparse vectors as named vectors on the same
 point, fused server-side by Reciprocal Rank Fusion. Both models run locally
 through fastembed, so re-indexing needs no API key.

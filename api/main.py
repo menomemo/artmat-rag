@@ -41,7 +41,7 @@ from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
-from rag.search import search
+from rag.search import PRODUCTION_METHOD, search
 
 # What kind of evidence each layer rests on. Categorical, and every value is
 # true by the definition of the layer rather than estimated.
@@ -99,7 +99,7 @@ def startup() -> None:
     ones the first request will actually use instead of a second copy.
     """
     _state["qdrant"] = qdrant_connect()
-    search(_state["qdrant"], "warm", method="hybrid", limit=1)
+    search(_state["qdrant"], "warm", method=PRODUCTION_METHOD, limit=1)
     try:
         init_schema()
         _state["db_error"] = None
@@ -171,7 +171,8 @@ async def ask(req: AskRequest):
         else:
             rw = Rewrite(original=question, rewritten=question, used=False)
             hits = await loop.run_in_executor(
-                None, lambda: search(qdrant, question, method="hybrid", limit=req.k)
+                None,
+                lambda: search(qdrant, question, method=PRODUCTION_METHOD, limit=req.k),
             )
         retrieval_ms = int((time.perf_counter() - started) * 1000)
 
@@ -234,7 +235,7 @@ async def ask(req: AskRequest):
                 "rewritten": rw.rewritten,
                 "rewrite_used": rw.used,
                 "variant": req.variant,
-                "method": "rewrite_hybrid" if req.rewrite else "hybrid",
+                "method": "rewrite_hybrid_mmr" if req.rewrite else PRODUCTION_METHOD,
                 "answer": answer.text,
                 "source_counts": source_counts,
                 "chunk_ids": [h.chunk_id for h in hits],
