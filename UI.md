@@ -74,7 +74,7 @@ sizes itself; `st.columns(len(EXAMPLES))` adapts.
 
 ```python
 st.set_page_config(
-    page_title="artmat — materials for making",
+    page_title="MATTER — material evidence",
     layout="wide",
     initial_sidebar_state="collapsed",
 )

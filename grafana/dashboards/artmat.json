@@ -1,6 +1,6 @@
 {
   "uid": "artmat-monitoring",
-  "title": "artmat-rag — usage & quality",
+  "title": "MATTER — usage & quality",
   "description": "Seven panels over the Postgres query log. The choice of panels follows the failure modes this system actually has: a retrieval hit-rate of 0.59 on realistic questions means the interesting question is not 'is it up' but 'is it answering from the right sources, is anyone finding it useful, and what is it costing'.",
   "tags": ["artmat", "rag"],
   "timezone": "browser",

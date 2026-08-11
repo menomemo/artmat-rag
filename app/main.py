@@ -46,7 +46,7 @@ from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
 from rag.search import search
 
-st.set_page_config(page_title="artmat — materials for making", layout="wide")
+st.set_page_config(page_title="MATTER — material evidence", layout="wide")
 
 EXAMPLES = [
     "will my cast resin sculpture go yellow if I put it outdoors",
