@@ -42,7 +42,7 @@ import rag.env  # noqa: F401  -- loads .env on import
 
 from app.cache import cache_fields, hit_record, hit_to_dict, lookup
 from app.db import estimate_cost, init_schema, log_feedback, log_query
-from rag.generate import LAYER_DESCRIPTIONS, MODEL, PROMPTS, stream
+from rag.generate import LAYER_DESCRIPTIONS, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
 from rag.search import (
@@ -57,6 +57,7 @@ from rag.search import (
     SearchFilters,
     search,
 )
+from rag.route import ModelRoute, route_question
 
 st.set_page_config(page_title="MATTER — material evidence", layout="wide")
 
@@ -146,6 +147,7 @@ def finish_query(
     retrieval_ms: int,
     generate_ms: int,
     filters: SearchFilters,
+    decision: ModelRoute,
 ) -> dict:
     """Log a completed query. Split out from retrieval so the UI can stream the
     answer first and record it afterwards, without the log losing anything."""
@@ -172,12 +174,15 @@ def finish_query(
         "input_tokens": answer.input_tokens,
         "output_tokens": answer.output_tokens,
         "cost_usd": estimate_cost(
-            MODEL, answer.input_tokens, answer.output_tokens
+            answer.model, answer.input_tokens, answer.output_tokens
         ),
         "truncated": answer.truncated,
         "error": None,
         **cache_fields(question, variant, k, use_rewrite),
         "filters": filters.as_dict(),
+        "generate_model": answer.model,
+        "route_tier": decision.tier,
+        "route_reason": decision.reason,
     }
 
     # An answer the user can already read must not be thrown away because the
@@ -198,6 +203,7 @@ def finish_query(
         "retrieval_ms": retrieval_ms,
         "generate_ms": generate_ms,
         "cache_hit": False,
+        "route": decision,
     }
 
 
@@ -377,11 +383,14 @@ if st.button("Ask", type="primary") and question.strip():
             st.info(f"**Searched as:** {rw.rewritten}", icon="🔎")
 
         _, client, _ = bootstrap()
+        decision = route_question(question.strip(), hits, variant)
         gen_started = time.perf_counter()
         answer_holder = {}
 
         def token_stream():
-            for piece in stream(question.strip(), hits, variant, client):
+            for piece in stream(
+                question.strip(), hits, variant, client, model=decision.model
+            ):
                 if isinstance(piece, str):
                     yield piece
                 else:
@@ -393,7 +402,8 @@ if st.button("Ask", type="primary") and question.strip():
         st.session_state.result = finish_query(
             question.strip(), variant, k, use_rewrite, rw,
             question.strip(), variant, k, use_rewrite, rw,
-            hits, answer_holder["answer"], retrieval_ms, generate_ms, filters,
+            hits, answer_holder["answer"], retrieval_ms, generate_ms,
+            filters, decision,
         )
         # Re-run so the page renders from session state alone. Without this the
         # streamed text is drawn by this branch, and every later interaction --
@@ -420,8 +430,13 @@ if result:
          if result.get("cache_hit") else
          f"{result['retrieval_ms']} ms retrieval · {result['generate_ms']} ms "
          f"generation · {answer.input_tokens:,} in / {answer.output_tokens:,} out "
-         f"· ${estimate_cost(MODEL, answer.input_tokens, answer.output_tokens):.4f}")
+         f"· ${estimate_cost(answer.model, answer.input_tokens, answer.output_tokens):.4f}")
     )
+    decision = result.get("route")
+    if decision:
+        st.caption(
+            f"Model route: {decision.tier} · `{answer.model}` · {decision.reason}"
+        )
 
     if result["query_id"] is not None:
         left, right, _ = st.columns([1, 1, 6])

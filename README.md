@@ -461,6 +461,29 @@ That leaves a discrepancy worth stating plainly: **the offline judge scores
 were measured with thinking enabled, and the UI ships with it disabled.** It is
 a flag, not a silent default, and the difference is untested.
 
+### Model routing
+
+Interactive requests route after retrieval without making another model call.
+Only a short, explicit specification lookup whose retrieved passages are all
+manufacturer datasheets and whose top passage is a spec table uses
+`claude-haiku-4-5`. Comparison, recommendation, safety, compatibility,
+troubleshooting, outdoor ageing, cross-source evidence, missing evidence, and
+the no-context control all stay on `claude-sonnet-5`.
+
+The decision is deliberately asymmetric: routing a simple lookup to Sonnet
+costs more; routing a disagreement question to Haiku risks flattening the
+evidence. On the 400 existing ground-truth questions, **35 (8.75%)** qualify for
+the simple route — 34/200 literal questions and 1/200 artist-style questions.
+That is routing coverage, not a claimed quality or dollar saving: no paid
+Haiku-vs-Sonnet answer evaluation was run for this change. Set
+`MODEL_ROUTING_ENABLED=false` to reproduce the all-Sonnet path used by the
+published answer-quality evaluation.
+
+FastAPI emits a `route` SSE event before generation and includes the model,
+tier, and reason in `done`. Streamlit shows the same decision under the answer.
+Postgres stores all three fields, so cost and feedback can be compared by the
+model that actually answered rather than by a configured default.
+
 ---
 
 ## Monitoring
