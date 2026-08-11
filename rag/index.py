@@ -104,13 +104,43 @@ def connect() -> QdrantClient:
     evaluation measured.
     """
     wait_for_qdrant()
-    return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=120)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=120)
+    if client.collection_exists(COLLECTION):
+        ensure_payload_indexes(client)
+    return client
+
+
+def ensure_payload_indexes(client: QdrantClient) -> None:
+    """Idempotently add every index used by production metadata filters."""
+    fields = {
+        "source_type": models.PayloadSchemaType.KEYWORD,
+        "chunk_type": models.PayloadSchemaType.KEYWORD,
+        "category": models.PayloadSchemaType.KEYWORD,
+        "domain": models.PayloadSchemaType.KEYWORD,
+        "material": models.PayloadSchemaType.KEYWORD,
+        "year": models.PayloadSchemaType.INTEGER,
+    }
+    existing = client.get_collection(COLLECTION).payload_schema
+    for field, schema in fields.items():
+        if field in existing:
+            if existing[field].data_type != schema:
+                raise RuntimeError(
+                    f"payload index {field!r} is {existing[field].data_type}, "
+                    f"expected {schema}"
+                )
+            continue
+        client.create_payload_index(
+            collection_name=COLLECTION,
+            field_name=field,
+            field_schema=schema,
+        )
 
 
 def create_collection(client: QdrantClient, drop: bool = False) -> None:
     if drop and client.collection_exists(COLLECTION):
         client.delete_collection(COLLECTION)
     if client.collection_exists(COLLECTION):
+        ensure_payload_indexes(client)
         return
 
     client.create_collection(
@@ -131,12 +161,7 @@ def create_collection(client: QdrantClient, drop: bool = False) -> None:
 
     # Payload indexes on the fields the evaluation and the UI actually filter
     # by. Without them Qdrant full-scans the payload for every filtered query.
-    for field in ("source_type", "chunk_type"):
-        client.create_payload_index(
-            collection_name=COLLECTION,
-            field_name=field,
-            field_schema=models.PayloadSchemaType.KEYWORD,
-        )
+    ensure_payload_indexes(client)
 
 
 def load_chunks(path: Path) -> list[dict]:
