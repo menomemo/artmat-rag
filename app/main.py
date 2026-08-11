@@ -178,7 +178,7 @@ def finish_query(
         ),
         "truncated": answer.truncated,
         "error": None,
-        **cache_fields(question, variant, k, use_rewrite),
+        **cache_fields(question, variant, k, use_rewrite, filters),
         "filters": filters.as_dict(),
         "generate_model": answer.model,
         "route_tier": decision.tier,
@@ -223,6 +223,7 @@ def finish_cached_query(cached, total_ms: int) -> dict:
         "generate_ms": 0,
         "total_ms": total_ms,
         "cache_hit": True,
+        "route": cached.route,
     }
 
 
@@ -362,7 +363,7 @@ if st.button("Ask", type="primary") and question.strip():
     try:
         cache_started = time.perf_counter()
         try:
-            cached = lookup(question.strip(), variant, k, use_rewrite)
+            cached = lookup(question.strip(), variant, k, use_rewrite, filters)
         except Exception:
             cached = None
 

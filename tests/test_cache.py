@@ -11,6 +11,7 @@ from app.cache import (
     lookup,
     normalize_question,
 )
+from rag.search import SearchFilters
 
 
 class ExactCacheTests(unittest.TestCase):
@@ -38,6 +39,25 @@ class ExactCacheTests(unittest.TestCase):
         self.assertNotEqual(first.key, second.key)
         self.assertEqual(second.namespace, "second")
 
+    def test_identity_includes_metadata_filters(self):
+        unfiltered = identity_for("question", "arbitrated", 8, True)
+        filtered = identity_for(
+            "question",
+            "arbitrated",
+            8,
+            True,
+            SearchFilters(source_types=("conservation_literature",)),
+        )
+        other_filter = identity_for(
+            "question",
+            "arbitrated",
+            8,
+            True,
+            SearchFilters(source_types=("manufacturer_datasheet",)),
+        )
+        self.assertNotEqual(unfiltered.key, filtered.key)
+        self.assertNotEqual(filtered.key, other_filter.key)
+
     @patch("app.cache.find_cached_query")
     def test_lookup_restores_answer_rewrite_and_evidence(self, find):
         identity = identity_for("question", "arbitrated", 8, True)
@@ -61,6 +81,10 @@ class ExactCacheTests(unittest.TestCase):
                     "score": 0.9,
                 }
             ],
+            "filters": {"source_types": ["manufacturer_datasheet"]},
+            "generate_model": "claude-haiku-4-5",
+            "route_tier": "simple",
+            "route_reason": "single-source specification lookup",
         }
 
         cached = lookup("question", "arbitrated", 8, True)
@@ -71,12 +95,16 @@ class ExactCacheTests(unittest.TestCase):
         self.assertEqual(cached.answer.input_tokens, 0)
         self.assertEqual(cached.rewrite.terms, ["pot life"])
         self.assertEqual(cached.hits[0].chunk_id, "chunk-1")
+        self.assertEqual(cached.answer.model, "claude-haiku-4-5")
+        self.assertEqual(cached.route.tier, "simple")
 
         record = hit_record(cached, 12)
         self.assertTrue(record["cache_hit"])
         self.assertEqual(record["cache_source_query_id"], 41)
         self.assertEqual(record["cost_usd"], 0)
         self.assertEqual(record["total_ms"], 12)
+        self.assertEqual(record["generate_model"], "claude-haiku-4-5")
+        self.assertEqual(record["filters"]["source_types"], ["manufacturer_datasheet"])
 
     def test_disabled_cache_does_not_touch_database(self):
         with patch.dict(os.environ, {"EXACT_CACHE_ENABLED": "false"}):

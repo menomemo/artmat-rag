@@ -215,7 +215,10 @@ async def ask(req: AskRequest):
         cache_started = time.perf_counter()
         try:
             cached = await loop.run_in_executor(
-                None, lambda: lookup(question, req.variant, req.k, req.rewrite)
+                None,
+                lambda: lookup(
+                    question, req.variant, req.k, req.rewrite, filters
+                ),
             )
         except Exception:
             # The cache is an optimisation backed by the optional query log.
@@ -233,6 +236,11 @@ async def ask(req: AskRequest):
             })
             yield sse("hits", {
                 "hits": [hit_json(hit, i) for i, hit in enumerate(cached.hits)]
+            })
+            yield sse("route", {
+                "tier": cached.route.tier,
+                "model": cached.answer.model,
+                "reason": cached.route.reason,
             })
             yield sse("token", {"text": cached.answer.text})
 
@@ -255,6 +263,9 @@ async def ask(req: AskRequest):
                 "source_counts": cached.source_counts,
                 "cache_hit": True,
                 "cache_source_query_id": cached.source_query_id,
+                "model": cached.answer.model,
+                "route_tier": cached.route.tier,
+                "route_reason": cached.route.reason,
             })
             return
 
@@ -365,7 +376,9 @@ async def ask(req: AskRequest):
                 "cost_usd": cost,
                 "truncated": answer.truncated,
                 "error": None,
-                **cache_fields(question, req.variant, req.k, req.rewrite),
+                **cache_fields(
+                    question, req.variant, req.k, req.rewrite, filters
+                ),
                 "filters": filters.as_dict(),
                 "generate_model": answer.model,
                 "route_tier": decision.tier,

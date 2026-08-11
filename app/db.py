@@ -206,7 +206,8 @@ def find_cached_query(cache_key: str, url: str | None = None) -> dict | None:
             SELECT q.id, q.question, q.rewritten, q.rewrite_used,
                    q.rewrite_terms, q.variant, q.method, q.answer,
                    q.source_counts, q.chunk_ids, q.hits, q.n_hits,
-                   q.cache_key, q.cache_namespace
+                   q.cache_key, q.cache_namespace, q.filters,
+                   q.generate_model, q.route_tier, q.route_reason
               FROM queries q
              WHERE q.cache_key = %s
                AND q.cache_hit = FALSE

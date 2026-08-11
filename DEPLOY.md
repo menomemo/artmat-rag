@@ -1,5 +1,26 @@
 # Cloud deployment
 
+## MATTER desktop preview on Cloudflare Pages
+
+The Win95 interface in `web/` is deployed independently from the Python
+service. It is intentionally an offline preview: submitting a question renders
+labelled placeholder evidence and makes no network or model request.
+
+```bash
+npx wrangler pages deploy web --project-name matter
+```
+
+The Pages project uses `wrangler.jsonc`; `web/_headers` supplies a restrictive
+Content Security Policy and long-lived font caching. The production custom
+domain is `matter.menomemo.moe`. This does not replace the apex site or the
+existing `poise.menomemo.moe` Pages project.
+
+`Dockerfile` continues to start the reference Streamlit application.
+`Dockerfile.api` is the separate FastAPI image and listens on port 7860. Do not
+connect the public desktop UI to it until the container has managed Qdrant and
+Postgres credentials, an exact `ALLOWED_ORIGINS` value, request throttling and
+a confirmed monthly compute budget.
+
 The same code runs in two places. Locally it talks to the three containers in
 `docker-compose.yml`; deployed it talks to managed equivalents. Nothing is
 branched on a `PRODUCTION` flag — the difference is four environment variables,
