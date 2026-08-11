@@ -83,7 +83,10 @@ const startMenu = document.getElementById("start-menu");
 const settingsMenuTrigger = document.getElementById("settings-menu-trigger");
 const desktopSettingsButton = document.getElementById("desktop-settings");
 const windowStates = new Map();
-const COMPACT_BREAKPOINT = 600;
+// A split-screen browser can be physically wide while exposing only ~700 CSS
+// pixels to the page. Switch to the single-column desktop before windows and
+// shortcuts begin colliding, not only at phone width.
+const COMPACT_BREAKPOINT = 800;
 let normalStackOrder = 100;
 
 function setTheme(theme) {
