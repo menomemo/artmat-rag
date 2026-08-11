@@ -40,6 +40,7 @@ from rag.search import (
     CANDIDATES,
     MMR_CANDIDATES,
     MMR_RELEVANCE_HEAD,
+    PRODUCTION_DIVERSITY_ENABLED,
     Hit,
     SearchFilters,
     _metadata_filter,
@@ -157,7 +158,7 @@ def search_rewritten(
     limit: int = 5,
     rerank: bool = True,
     source_types: list[str] | None = None,
-    diversify_results: bool = True,
+    diversify_results: bool | None = None,
     filters: SearchFilters | None = None,
 ) -> list[Hit]:
     """Hybrid retrieval over the original and the rewrite together.
@@ -173,6 +174,8 @@ def search_rewritten(
     too, but appended with the technical terms, since that is the arm that
     could not match anything before.
     """
+    if diversify_results is None:
+        diversify_results = PRODUCTION_DIVERSITY_ENABLED
     diversity_active = diversify_results and limit > MMR_RELEVANCE_HEAD
     points = client.query_points(
         collection_name=COLLECTION,

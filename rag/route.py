@@ -42,7 +42,7 @@ class ModelRoute:
 
 
 def routing_enabled() -> bool:
-    return os.environ.get("MODEL_ROUTING_ENABLED", "true").strip().lower() not in {
+    return os.environ.get("MODEL_ROUTING_ENABLED", "false").strip().lower() not in {
         "0", "false", "no", "off"
     }
 

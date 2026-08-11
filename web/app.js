@@ -13,13 +13,6 @@ const LAYER_NAME = {
   collection_precedent: "collection",
 };
 
-const ATTRIBUTION = [
-  [/manufactur|data ?sheet|smooth-?on|the maker|vendor/i, "manufacturer_datasheet"],
-  [/conservation|conservator|restorer/i, "conservation_literature"],
-  [/collection|tate|precedent|holdings/i, "collection_precedent"],
-  [/study|studies|research|peer-reviewed|paper|literature|experiment/i, "materials_science"],
-];
-
 const PREVIEW_ANSWER = `**Interface preview.** No retrieval or Claude request was made. This local sample lets you judge the pixel typography, spacing, palette and reading experience without spending anything.
 
 In the connected version, the answer will stream into this solid panel. Manufacturer, materials-science, conservation and collection evidence will remain visibly separate, with the retrieved source chunks below.`;
@@ -950,24 +943,12 @@ function esc(value) {
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
 }
 
-function whoSpeaks(sentence) {
-  for (const [pattern, layer] of ATTRIBUTION) {
-    if (pattern.test(sentence)) return layer;
-  }
-  return null;
-}
-
 function renderAnswer(text, streaming = false) {
   const html = text.split(/\n{2,}/).map((paragraph) => {
-    // Markdown closers can sit between punctuation and whitespace (`say.**
-    // Two`). Keeping them in the boundary prevents adjacent sources from being
-    // merged into one provenance tint.
-    const inked = paragraph.split(/(?<=[.!?][*"')\]]{0,2})\s+/).map((sentence) => {
-      const layer = whoSpeaks(sentence);
-      const safe = esc(sentence).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-      return layer ? `<span class="src-${layer}">${safe}</span>` : safe;
-    }).join(" ");
-    return `<p>${inked.replace(/\n/g, "<br>")}</p>`;
+    // Source identity must come from retrieved chunk ids, never lexical guesses
+    // such as the word "manufacturer" appearing in a conservation sentence.
+    const safe = esc(paragraph).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    return `<p>${safe.replace(/\n/g, "<br>")}</p>`;
   }).join("");
   answerEl.innerHTML = streaming ? `${html}<span class="cursor"></span>` : html;
 }

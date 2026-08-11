@@ -19,7 +19,7 @@ from app.db import find_cached_query
 from rag.generate import MODEL as GENERATE_MODEL, PROMPTS, Answer
 from rag.rewrite import MODEL as REWRITE_MODEL, SYSTEM_PROMPT, Rewrite
 from rag.route import COMPLEX_MODEL, SIMPLE_MODEL, ModelRoute, routing_enabled
-from rag.search import PRODUCTION_METHOD, Hit, SearchFilters
+from rag.search import PRODUCTION_METHOD, PRODUCTION_REWRITE_METHOD, Hit, SearchFilters
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ def identity_for(
         "variant": variant,
         "k": k,
         "rewrite": use_rewrite,
-        "retrieval": "rewrite_hybrid_mmr" if use_rewrite else PRODUCTION_METHOD,
+        "retrieval": PRODUCTION_REWRITE_METHOD if use_rewrite else PRODUCTION_METHOD,
         "filters": filter_values or {},
         "generate_model": GENERATE_MODEL,
         "simple_generate_model": SIMPLE_MODEL,

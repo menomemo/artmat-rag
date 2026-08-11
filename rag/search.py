@@ -56,7 +56,11 @@ MMR_MAX_PER_FAMILY = int(os.environ.get("MMR_MAX_PER_FAMILY", "2"))
 MMR_RELEVANCE_HEAD = int(os.environ.get("MMR_RELEVANCE_HEAD", "5"))
 
 METHODS = ("dense", "sparse", "hybrid", "hybrid_mmr", "hybrid_rerank")
-PRODUCTION_METHOD = "hybrid_mmr"
+PRODUCTION_DIVERSITY_ENABLED = os.environ.get(
+    "PRODUCTION_DIVERSITY_ENABLED", "false"
+).strip().lower() not in {"0", "false", "no", "off"}
+PRODUCTION_METHOD = "hybrid_mmr" if PRODUCTION_DIVERSITY_ENABLED else "hybrid"
+PRODUCTION_REWRITE_METHOD = f"rewrite_{PRODUCTION_METHOD}"
 
 SOURCE_TYPES = (
     "manufacturer_datasheet",

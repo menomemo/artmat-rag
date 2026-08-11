@@ -19,6 +19,7 @@ def hit(
     )
 
 
+@patch.dict(os.environ, {"MODEL_ROUTING_ENABLED": "true"})
 class ModelRoutingTests(unittest.TestCase):
     def test_clear_single_source_spec_lookup_uses_simple_model(self):
         route = route_question(

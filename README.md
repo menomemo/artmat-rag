@@ -217,14 +217,14 @@ become a language filter by accident.**
 
 ## Retrieval
 
-### Production diversity: preserve the head, diversify the context
+### Optional diversity: preserve the head, diversify the context
 
-The shipped retriever is `hybrid_mmr`. It preserves the first five hybrid
-results exactly, then fills the remaining slots of the eight-passage context
-with maximal marginal relevance over the dense vectors already stored in
-Qdrant. Manufacturer titles also receive a conservative series key: numeric
-grade and speed suffixes are removed (`Mold Star 15 SLOW` → `Mold Star`), while
-literature sources remain keyed by document rather than guessed into families.
+The implemented `hybrid_mmr` retriever preserves the first five hybrid results
+exactly, then fills the remaining slots of the eight-passage context with
+maximal marginal relevance over the dense vectors already stored in Qdrant.
+Manufacturer titles also receive a conservative series key: numeric grade and
+speed suffixes are removed (`Mold Star 15 SLOW` → `Mold Star`), while literature
+sources remain keyed by document rather than guessed into families.
 
 Measured over all 200 artist-style ground-truth questions at k=8, manufacturer
 family hit rate rose from **0.642 to 0.663**, the mean unique-family ratio rose
@@ -232,8 +232,10 @@ from **0.722 to 0.778**, and questions with more than two results from one
 family fell from **52 to 19**. Document hit@8 stayed **0.685**; strict chunk
 hit@8 moved from 0.620 to 0.605 because three target chunks were replaced by a
 different member of the same relevant document/family. Median retrieval rose
-from 19 ms to 35 ms. The old `hybrid` method remains available as the control,
-so published comparisons still name the pipeline they measured.
+from 19 ms to 35 ms. This is a retrieval-only audit, not a regeneration of the
+answer-quality experiment. `PRODUCTION_DIVERSITY_ENABLED` therefore defaults to
+`false`: the UI stays on the evaluated `hybrid` path until both evaluations are
+rerun with MMR enabled.
 
 ### Metadata filters
 
@@ -269,6 +271,11 @@ reader enables it. Permission filtering is deliberately absent: the corpus has
 no tenant, owner, or ACL metadata, so a permissions control would claim an
 isolation guarantee the index cannot enforce. Every applied filter is stored
 with the query log for monitoring and reproducibility.
+
+The default filter is empty and compiles to no Qdrant filter (`None`), so the
+unfiltered production path remains the one measured below. Filtered queries are
+a new, explicitly scoped mode; their quality is not represented by the
+unfiltered aggregate table.
 
 One Qdrant collection, dense and sparse vectors as named vectors on the same
 point, fused server-side by Reciprocal Rank Fusion. Both models run locally
@@ -492,9 +499,9 @@ That leaves a discrepancy worth stating plainly: **the offline judge scores
 were measured with thinking enabled, and the UI ships with it disabled.** It is
 a flag, not a silent default, and the difference is untested.
 
-### Model routing
+### Optional model routing
 
-Interactive requests route after retrieval without making another model call.
+The implemented router runs after retrieval without making another model call.
 Only a short, explicit specification lookup whose retrieved passages are all
 manufacturer datasheets and whose top passage is a spec table uses
 `claude-haiku-4-5`. Comparison, recommendation, safety, compatibility,
@@ -506,14 +513,24 @@ costs more; routing a disagreement question to Haiku risks flattening the
 evidence. On the 400 existing ground-truth questions, **35 (8.75%)** qualify for
 the simple route — 34/200 literal questions and 1/200 artist-style questions.
 That is routing coverage, not a claimed quality or dollar saving: no paid
-Haiku-vs-Sonnet answer evaluation was run for this change. Set
-`MODEL_ROUTING_ENABLED=false` to reproduce the all-Sonnet path used by the
-published answer-quality evaluation.
+Haiku-vs-Sonnet answer evaluation was run for this change.
+`MODEL_ROUTING_ENABLED` therefore defaults to `false`, preserving the all-Sonnet
+path used by the published answer-quality evaluation. Enabling it is an
+explicit opt-in until that experiment is rerun.
 
 FastAPI emits a `route` SSE event before generation and includes the model,
 tier, and reason in `done`. Streamlit shows the same decision under the answer.
 Postgres stores all three fields, so cost and feedback can be compared by the
 model that actually answered rather than by a configured default.
+
+### Evaluation contract for production defaults
+
+Published numbers describe the default shipped path: `hybrid` retrieval,
+all-Sonnet generation and no metadata filter. MMR and model routing are
+implemented but default off because their retrieval-only coverage audits do not
+replace the answer-quality experiment. Turning either on requires rerunning the
+relevant retrieval and answer evaluations before describing the new path with
+the tables above.
 
 ---
 
@@ -674,8 +691,9 @@ with both embedding models baked in so there is no cold-start download.
 Stated because a system that reports only its wins has not been evaluated.
 
 1. **Manufacturer datasheets are near-duplicate.** ~100 platinum silicones
-   repeat the same warnings verbatim. Deduplication by product family is not
-   implemented; chunk-level retrieval metrics understate real usability.
+   repeat the same warnings verbatim. MMR diversification is implemented and
+   retrieval-audited, but defaults off until answer quality is re-measured;
+   chunk-level retrieval metrics still understate product-family usability.
 2. **One vendor.** Smooth-On only. Jesmonite blocks crawlers, so a question the
    project was designed around cannot be answered from primary sources.
 3. **Reranking is not shipped**, and the reason it underperforms on long
