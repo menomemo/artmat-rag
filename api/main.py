@@ -65,7 +65,7 @@ EVIDENCE_KIND = {
     "collection_precedent": "held in a collection",
 }
 
-app = FastAPI(title="artmat", version="0.1")
+app = FastAPI(title="MATTER", version="0.1")
 
 # The browser front end is served from a different origin (Cloudflare Pages in
 # production, a file server in development), so CORS is not optional. Origins

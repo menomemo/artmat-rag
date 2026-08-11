@@ -3,75 +3,275 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>it was clear when it shipped — artmat</title>
-<link rel="stylesheet" href="style.css">
+<meta name="color-scheme" content="light">
+<title>MATTER.EXE — material evidence</title>
+    <link rel="stylesheet" href="style.css?v=71">
 </head>
-<body>
+<body data-theme="contrast">
 
-<!-- Crazing, generated. The hairline cracks in the aged panels are computed
-     from noise rather than loaded as a texture, which is why this whole front
-     end is three files and no assets. -->
-<svg id="defs" aria-hidden="true" focusable="false">
-  <defs>
-    <filter id="craze" x="-4%" y="-4%" width="108%" height="108%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.9"
-                    numOctaves="3" seed="7" result="n"/>
-      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.4"
-                         xChannelSelector="R" yChannelSelector="G"/>
-    </filter>
-    <filter id="craze-deep" x="-6%" y="-6%" width="112%" height="112%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.015 1.1"
-                    numOctaves="4" seed="19" result="n"/>
-      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"
-                         xChannelSelector="R" yChannelSelector="G"
-                         result="d"/>
-      <feGaussianBlur in="d" stdDeviation="0.25"/>
-    </filter>
-  </defs>
-</svg>
+<div class="page-shell">
+  <nav class="desktop-icons" aria-label="Desktop shortcuts">
+    <button type="button" class="desktop-icon" data-window-open="ask"><span aria-hidden="true">[?]</span>ASK</button>
+    <button type="button" class="desktop-icon" data-window-open="examples"><span aria-hidden="true">[≡]</span>SAMPLES</button>
+    <button type="button" class="desktop-icon" id="desktop-settings"><span aria-hidden="true">[⚙]</span>SETTINGS</button>
+    <button type="button" class="desktop-icon" data-window-open="history"><span aria-hidden="true">[↺]</span>HISTORY</button>
+  </nav>
 
-<header id="top">
-  <h1>it was clear when it shipped.</h1>
-  <p>
-    Four kinds of source answer questions about making things, and they do not
-    agree. What separates them is not who is right — it is
-    <strong>what each one is in a position to have seen</strong>. A datasheet
-    has been in a cabinet. A conservation report has been outside.
-  </p>
-</header>
+  <header id="top" class="pixel-window draggable-window" data-window="artmat" data-window-label="MATTER.EXE">
+    <div class="titlebar drag-handle" tabindex="0" aria-label="Drag MATTER program window; arrow keys also move it">
+      <span class="titlebar-icon" aria-hidden="true">✦</span>
+      <span>MATTER.EXE / MATERIAL EVIDENCE</span>
+      <span class="dialog-buttons">
+        <button type="button" data-window-action="minimize" aria-label="Minimize MATTER window">_</button>
+        <button type="button" data-window-action="maximize" aria-label="Maximize MATTER window">□</button>
+        <button type="button" data-window-action="close" aria-label="Close MATTER window">×</button>
+      </span>
+    </div>
 
-<!-- Sticky, so the one thing you came to do is never scrolled away from. -->
-<div id="bar">
-  <form id="ask" autocomplete="off">
-    <label for="q" class="sr">Your question</label>
-    <input id="q" type="text" maxlength="2000"
-           placeholder="what are you trying to make, avoid, or fix">
-    <button type="submit" id="go">ask</button>
-  </form>
+    <div class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-light"></span> INTERFACE ONLINE*</p>
+        <h1>ask materials,<br>not vibes.</h1>
+        <p class="intro">
+          Four kinds of evidence answer questions about making physical things.
+          They disagree on purpose — because a datasheet and an examined object
+          have not seen the same world.
+        </p>
+        <p class="preview-note">* interface preview only · no API requests</p>
+      </div>
+    </div>
+
+    <div class="window-dock" aria-label="Open desktop windows">
+      <span class="task-pill">DESKTOP READY</span>
+      <span>MEMORY_STATUS: DREAMING</span>
+    </div>
+  </header>
+
+  <aside class="desktop-dialog theme-panel draggable-window is-minimized" data-window="palette" data-window-label="DISPLAY MODE" data-start-minimized="true" data-min-width="260" data-max-width="480" data-max-height="360"
+         aria-label="Choose interface palette">
+    <div class="mini-title drag-handle" tabindex="0" aria-label="Drag palette window; arrow keys also move it">
+      <span>:: DRAG / PALETTE_SELECT.DLG</span>
+      <span class="dialog-buttons">
+        <button type="button" data-window-action="minimize" aria-label="Minimize palette window">_</button>
+        <button type="button" data-window-action="close" aria-label="Close palette window">×</button>
+      </span>
+    </div>
+    <div class="window-content">
+      <p>choose your display mode:</p>
+      <div class="theme-options" role="group" aria-label="Colour palette">
+        <button type="button" data-theme-choice="contrast" aria-pressed="true">
+          <span class="swatches contrast-swatches" aria-hidden="true"><i></i><i></i><i></i></span>
+          contrast
+        </button>
+        <button type="button" data-theme-choice="neutral" aria-pressed="false">
+          <span class="swatches neutral-swatches" aria-hidden="true"><i></i><i></i><i></i></span>
+          off-neutral
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <aside class="desktop-dialog api-panel draggable-window is-minimized" data-window="api" data-window-label="AI CONNECTION" data-start-minimized="true" data-min-width="300" data-max-width="560" data-min-height="200" data-max-height="520"
+         aria-label="Configure AI provider and API key">
+    <div class="mini-title drag-handle" tabindex="0" aria-label="Drag AI connection window; arrow keys also move it">
+      <span>:: DRAG / AI_CONNECTION.DLG</span>
+      <span class="dialog-buttons">
+        <button type="button" data-window-action="minimize" aria-label="Minimize AI connection window">_</button>
+        <button type="button" data-window-action="close" aria-label="Close AI connection window">×</button>
+      </span>
+    </div>
+    <form id="api-settings" class="window-content settings-form" autocomplete="off">
+      <div class="settings-field">
+        <span class="settings-label">PROVIDER</span>
+        <select id="api-provider" hidden tabindex="-1" aria-hidden="true">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic / Claude</option>
+          <option value="google">Google Gemini</option>
+          <option value="mistral">Mistral AI</option>
+          <option value="xai">xAI / Grok</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="openrouter">OpenRouter</option>
+          <option value="groq">Groq</option>
+          <option value="cohere">Cohere</option>
+          <option value="together">Together AI</option>
+          <option value="perplexity">Perplexity</option>
+          <option value="openai-compatible">Custom OpenAI-compatible</option>
+          <option value="anthropic-compatible">Custom Anthropic-compatible</option>
+        </select>
+        <span class="provider-picker">
+          <button type="button" id="provider-picker-button" class="provider-picker-button"
+                  aria-haspopup="listbox" aria-expanded="false">
+            <span id="provider-picker-label">OpenAI</span>
+            <span class="provider-picker-arrow" aria-hidden="true">▼</span>
+          </button>
+          <span id="provider-picker-list" class="provider-picker-list" role="listbox"
+                aria-label="AI provider" hidden></span>
+        </span>
+      </div>
+      <label>MODEL ID
+        <input id="api-model" type="text" placeholder="enter the provider's model ID" spellcheck="false">
+      </label>
+      <label>API KEY
+        <span class="secret-field">
+          <input id="api-key" type="password" placeholder="key stays in this page only" autocomplete="new-password" spellcheck="false">
+          <button type="button" id="toggle-api-key" aria-pressed="false">SHOW</button>
+        </span>
+      </label>
+      <label>BASE URL <span class="optional">OPTIONAL</span>
+        <input id="api-base-url" type="url" placeholder="use provider default" spellcheck="false">
+      </label>
+      <p id="api-protocol" class="settings-note">PROTOCOL: OPENAI RESPONSES / CHAT</p>
+      <p id="api-key-status" class="api-status" role="status">KEY STATUS: NOT LOADED</p>
+      <div class="settings-actions">
+        <button type="submit">LOAD FOR THIS PAGE</button>
+        <button type="button" id="forget-api-key">FORGET KEY</button>
+      </div>
+      <p class="settings-note">The key is never written to localStorage and is cleared when this page reloads. No request is sent in offline preview.</p>
+    </form>
+  </aside>
+
+  <aside class="desktop-dialog history-panel draggable-window is-minimized" data-window="history" data-window-label="QUESTION HISTORY" data-start-minimized="true" data-min-width="300" data-max-width="600" data-min-height="160" data-max-height="520"
+         aria-label="Question history">
+    <div class="mini-title drag-handle" tabindex="0" aria-label="Drag history window; arrow keys also move it">
+      <span>:: DRAG / QUESTION_HISTORY.LOG</span>
+      <span class="dialog-buttons">
+        <button type="button" data-window-action="minimize" aria-label="Minimize history window">_</button>
+        <button type="button" data-window-action="close" aria-label="Close history window">×</button>
+      </span>
+    </div>
+    <div class="window-content history-content">
+      <div class="history-toolbar">
+        <span>LOCAL / MAX 30</span>
+        <button type="button" id="clear-history">CLEAR ALL</button>
+      </div>
+      <ol id="history-list" aria-live="polite"></ol>
+      <p id="history-empty" class="history-empty">NO QUESTIONS SAVED YET.</p>
+    </div>
+  </aside>
+
+  <aside class="desktop-dialog font-panel draggable-window is-minimized" data-window="font" data-window-label="FONT INFO" data-start-minimized="true" data-min-width="260" data-max-width="560" data-max-height="480"
+         aria-label="Preview title fonts">
+    <div class="mini-title drag-handle" tabindex="0" aria-label="Drag font window; arrow keys also move it">
+      <span>:: DRAG / FONT_INFO.DLG</span>
+      <span class="dialog-buttons">
+        <button type="button" data-window-action="minimize" aria-label="Minimize font window">_</button>
+        <button type="button" data-window-action="close" aria-label="Close font window">×</button>
+      </span>
+    </div>
+    <div class="window-content font-options" aria-label="Interface fonts">
+      <div class="font-readout">
+        <span class="font-sample silkscreen-sample">ASK MATERIALS</span>
+        <small>TITLE: SILKSCREEN / solid-filled outline</small>
+      </div>
+      <div class="font-readout ui-font-sample">
+        <span>Windows has found new evidence.</span>
+        <small>UI + BODY: WIN95FA / MS Sans Serif recreation</small>
+      </div>
+    </div>
+  </aside>
+
+  <div id="bar">
+    <form id="ask" autocomplete="off" class="pixel-window draggable-window" data-window="ask" data-window-label="ASK A QUESTION" data-min-width="420" data-max-width="760" data-min-height="108" data-max-height="148">
+      <div class="titlebar compact drag-handle" tabindex="0" aria-label="Drag question window; arrow keys also move it">
+        <span><span aria-hidden="true">★</span> :: ASK_A_QUESTION.DLG</span>
+        <span class="offline-chip">OFFLINE PREVIEW</span>
+      </div>
+      <div class="ask-row">
+        <label for="q" class="ask-label">QUERY:</label>
+        <div class="input-shell">
+          <input id="q" type="text" maxlength="2000"
+                 placeholder="describe a material problem...">
+          <span id="pixel-caret" aria-hidden="true" hidden></span>
+        </div>
+        <button type="submit" id="go">ASK ↵</button>
+      </div>
+    </form>
+  </div>
+
+  <main>
+    <section class="prompt-panel pixel-window draggable-window is-minimized" data-window="examples" data-window-label="SAMPLE QUESTIONS" data-start-minimized="true" data-max-width="600" data-max-height="500" aria-labelledby="examples-title">
+      <div class="mini-title drag-handle" tabindex="0" aria-label="Drag sample questions window; arrow keys also move it" id="examples-title">START_HERE / SAMPLE QUESTIONS</div>
+      <ul id="examples">
+        <li><button type="button"><span>01</span>will my cast resin sculpture go yellow outdoors</button></li>
+        <li><button type="button"><span>02</span>how long can I work with silicone before it sets</button></li>
+        <li><button type="button"><span>03</span>aluminium or stainless steel for a piece by the sea</button></li>
+      </ul>
+    </section>
+
+    <p id="rewrite" hidden></p>
+
+    <section class="result-window pixel-window draggable-window" data-window="answer" data-window-label="ANSWER OUTPUT" hidden id="result-window">
+      <div class="titlebar compact drag-handle" tabindex="0" aria-label="Drag answer window; arrow keys also move it">
+        <span>ANSWER_OUTPUT.MD</span>
+      </div>
+      <article id="answer"></article>
+      <p id="meta" hidden></p>
+    </section>
+    <p id="error" hidden></p>
+
+    <section id="specimens" hidden>
+      <div class="section-heading">
+        <span>what it was built from</span>
+        <span>SOURCE_CHUNKS / CLICK TO EXPAND</span>
+      </div>
+      <div id="specimen-list"></div>
+    </section>
+  </main>
+
+  <nav id="start-menu" class="start-menu" aria-label="Start menu" hidden>
+    <div class="start-rail" aria-hidden="true">MATTER 95</div>
+    <div class="start-items">
+      <button type="button" data-window-open="artmat"><span class="menu-glyph">[✦]</span><span>Matter home</span></button>
+      <button type="button" data-window-open="ask"><span class="menu-glyph">[?]</span><span>Ask a question</span></button>
+      <button type="button" data-window-open="examples"><span class="menu-glyph">[≡]</span><span>Sample questions</span></button>
+      <div class="start-menu-item">
+        <button type="button" class="start-submenu-trigger" id="settings-menu-trigger"
+                aria-haspopup="menu" aria-expanded="false">
+          <span class="menu-glyph">[⚙]</span><span>Settings</span><span aria-hidden="true">▶</span>
+        </button>
+        <div class="start-submenu" role="menu" aria-label="Settings">
+          <div class="start-menu-item">
+            <button type="button" class="start-submenu-trigger" id="display-menu-trigger"
+                    role="menuitem" aria-haspopup="menu" aria-expanded="false">
+              <span class="menu-glyph">[■]</span><span>Display mode</span><span aria-hidden="true">▶</span>
+            </button>
+            <div class="start-submenu start-submenu-level-2" role="menu" aria-label="Display mode">
+              <button type="button" role="menuitemradio" data-theme-choice="contrast" aria-pressed="true">
+                <span class="menu-choice-marker" aria-hidden="true"></span><span>Contrast</span>
+              </button>
+              <button type="button" role="menuitemradio" data-theme-choice="neutral" aria-pressed="false">
+                <span class="menu-choice-marker" aria-hidden="true"></span><span>Off-neutral</span>
+              </button>
+              <button type="button" role="menuitem" data-window-open="palette">
+                <span class="menu-glyph">[□]</span><span>Open display panel</span>
+              </button>
+            </div>
+          </div>
+          <button type="button" role="menuitem" data-window-open="font"><span class="menu-glyph">[i]</span><span>Font information</span></button>
+          <button type="button" role="menuitem" data-window-open="api"><span class="menu-glyph">[⚿]</span><span>AI connection</span></button>
+        </div>
+      </div>
+      <button type="button" data-window-open="history"><span class="menu-glyph">[↺]</span><span>Question history</span></button>
+    </div>
+  </nav>
+
+  <footer>
+    <button type="button" class="start-button" id="start-button" aria-expanded="false" aria-controls="start-menu">▣ START</button>
+    <div class="task-buttons" aria-label="Desktop windows">
+      <button type="button" class="desktop-task" data-window-toggle="artmat">MATTER</button>
+      <button type="button" class="desktop-task" data-window-toggle="ask">ASK</button>
+      <button type="button" class="desktop-task" data-window-toggle="answer">ANSWER</button>
+      <button type="button" class="desktop-task" data-window-toggle="examples">SAMPLES</button>
+      <button type="button" class="desktop-task" data-window-toggle="palette">DISPLAY</button>
+      <button type="button" class="desktop-task" data-window-toggle="font">ABOUT</button>
+      <button type="button" class="desktop-task" data-window-toggle="api">AI KEY</button>
+      <button type="button" class="desktop-task" data-window-toggle="history">HISTORY</button>
+    </div>
+    <span>evidence before confidence</span>
+    <span>UI BUILD 02</span>
+  </footer>
 </div>
 
-<main>
-  <ul id="examples">
-    <li><button type="button">will my cast resin sculpture go yellow outdoors</button></li>
-    <li><button type="button">how long can I work with the silicone before it sets</button></li>
-    <li><button type="button">cast aluminium or stainless steel for a piece by the sea</button></li>
-  </ul>
-
-  <p id="rewrite" hidden></p>
-
-  <!-- The answer sits on a solid panel, never on glass. Y2K's failure mode is
-       beautiful chrome you cannot read; the gloss is allowed on the frame and
-       nowhere near a paragraph. -->
-  <article id="answer" hidden></article>
-  <p id="meta" hidden></p>
-  <p id="error" hidden></p>
-
-  <section id="specimens" hidden>
-    <h2>what it was built from</h2>
-    <div id="specimen-list"></div>
-  </section>
-</main>
-
-<script src="app.js"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
