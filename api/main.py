@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 
 import rag.env  # noqa: F401  -- loads .env on import
 
+from app.cache import cache_fields, hit_record, hit_to_dict, lookup
 from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
@@ -154,13 +155,60 @@ async def ask(req: AskRequest):
     if req.variant not in PROMPTS:
         raise HTTPException(400, f"unknown variant {req.variant!r}")
 
-    qdrant = _state.get("qdrant")
-    if qdrant is None:
-        raise HTTPException(503, "not ready")
-
     async def events():
         loop = asyncio.get_running_loop()
         question = req.question.strip()
+
+        cache_started = time.perf_counter()
+        try:
+            cached = await loop.run_in_executor(
+                None, lambda: lookup(question, req.variant, req.k, req.rewrite)
+            )
+        except Exception:
+            # The cache is an optimisation backed by the optional query log.
+            # A sleeping Postgres must not turn a working RAG request into 503.
+            cached = None
+
+        if cached is not None:
+            cache_ms = int((time.perf_counter() - cache_started) * 1000)
+            yield sse("rewrite", {
+                "original": cached.rewrite.original,
+                "rewritten": cached.rewrite.rewritten,
+                "used": cached.rewrite.used,
+                "terms": cached.rewrite.terms,
+                "retrieval_ms": 0,
+            })
+            yield sse("hits", {
+                "hits": [hit_json(hit, i) for i, hit in enumerate(cached.hits)]
+            })
+            yield sse("token", {"text": cached.answer.text})
+
+            query_id = None
+            try:
+                query_id = await loop.run_in_executor(
+                    None, log_query, hit_record(cached, cache_ms)
+                )
+            except Exception:
+                query_id = None
+            yield sse("done", {
+                "query_id": query_id,
+                "retrieval_ms": 0,
+                "generate_ms": 0,
+                "total_ms": cache_ms,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cost_usd": 0,
+                "truncated": False,
+                "source_counts": cached.source_counts,
+                "cache_hit": True,
+                "cache_source_query_id": cached.source_query_id,
+            })
+            return
+
+        qdrant = _state.get("qdrant")
+        if qdrant is None:
+            yield sse("error", {"message": "not ready"})
+            return
 
         started = time.perf_counter()
         if req.rewrite:
@@ -238,6 +286,8 @@ async def ask(req: AskRequest):
                 "answer": answer.text,
                 "source_counts": source_counts,
                 "chunk_ids": [h.chunk_id for h in hits],
+                "rewrite_terms": rw.terms,
+                "hits": [hit_to_dict(h) for h in hits],
                 "n_hits": len(hits),
                 "retrieval_ms": retrieval_ms,
                 "generate_ms": generate_ms,
@@ -247,6 +297,7 @@ async def ask(req: AskRequest):
                 "cost_usd": cost,
                 "truncated": answer.truncated,
                 "error": None,
+                **cache_fields(question, req.variant, req.k, req.rewrite),
             })
         except Exception:
             # Same rule as the Streamlit app: an answer the reader can already
@@ -264,6 +315,7 @@ async def ask(req: AskRequest):
             "cost_usd": round(cost, 6),
             "truncated": answer.truncated,
             "source_counts": source_counts,
+            "cache_hit": False,
         })
 
     return StreamingResponse(
