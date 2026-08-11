@@ -67,11 +67,31 @@ CREATE TABLE IF NOT EXISTS queries (
     -- cost on the day it ran does not.
     cost_usd        NUMERIC(10,6) NOT NULL DEFAULT 0,
     truncated       BOOLEAN      NOT NULL DEFAULT FALSE,
-    error           TEXT
+    error           TEXT,
+    -- Exact-cache fields are deliberately part of the append-only query log.
+    -- A cache hit gets its own row (and therefore its own feedback id), while
+    -- cache_source_query_id preserves which paid answer it reused.
+    cache_key        TEXT,
+    cache_namespace  TEXT,
+    cache_hit        BOOLEAN      NOT NULL DEFAULT FALSE,
+    cache_source_query_id BIGINT REFERENCES queries(id) ON DELETE SET NULL,
+    rewrite_terms    JSONB        NOT NULL DEFAULT '[]'::jsonb,
+    hits             JSONB        NOT NULL DEFAULT '[]'::jsonb
 );
+
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing deployment.
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS cache_key TEXT;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS cache_namespace TEXT;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS cache_hit BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS cache_source_query_id BIGINT REFERENCES queries(id) ON DELETE SET NULL;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS rewrite_terms JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS hits JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS queries_asked_at_idx ON queries (asked_at DESC);
 CREATE INDEX IF NOT EXISTS queries_variant_idx  ON queries (variant);
+CREATE INDEX IF NOT EXISTS queries_exact_cache_idx
+    ON queries (cache_key, asked_at DESC)
+    WHERE cache_hit = FALSE AND error IS NULL AND truncated = FALSE;
 
 CREATE TABLE IF NOT EXISTS feedback (
     id          BIGSERIAL PRIMARY KEY,
@@ -130,23 +150,70 @@ def log_query(record: dict, url: str | None = None) -> int:
                 question, rewritten, rewrite_used, variant, method, answer,
                 source_counts, chunk_ids, n_hits,
                 retrieval_ms, generate_ms, total_ms,
-                input_tokens, output_tokens, cost_usd, truncated, error
+                input_tokens, output_tokens, cost_usd, truncated, error,
+                cache_key, cache_namespace, cache_hit, cache_source_query_id,
+                rewrite_terms, hits
             ) VALUES (
                 %(question)s, %(rewritten)s, %(rewrite_used)s, %(variant)s,
                 %(method)s, %(answer)s, %(source_counts)s, %(chunk_ids)s,
                 %(n_hits)s, %(retrieval_ms)s, %(generate_ms)s, %(total_ms)s,
                 %(input_tokens)s, %(output_tokens)s, %(cost_usd)s,
-                %(truncated)s, %(error)s
+                %(truncated)s, %(error)s, %(cache_key)s, %(cache_namespace)s,
+                %(cache_hit)s, %(cache_source_query_id)s, %(rewrite_terms)s,
+                %(hits)s
             ) RETURNING id
             """,
             {
                 **record,
                 "source_counts": json.dumps(record.get("source_counts", {})),
                 "chunk_ids": json.dumps(record.get("chunk_ids", [])),
+                "cache_key": record.get("cache_key"),
+                "cache_namespace": record.get("cache_namespace"),
+                "cache_hit": record.get("cache_hit", False),
+                "cache_source_query_id": record.get("cache_source_query_id"),
+                "rewrite_terms": json.dumps(record.get("rewrite_terms", [])),
+                "hits": json.dumps(record.get("hits", [])),
             },
         ).fetchone()
         conn.commit()
         return row["id"]
+
+
+def find_cached_query(cache_key: str, url: str | None = None) -> dict | None:
+    """Return the newest complete paid answer for an exact cache key.
+
+    Cache-hit rows are never used as sources. This keeps the provenance chain
+    one hop long and means deleting or inspecting the original paid query is
+    sufficient to understand every reuse of it.
+    """
+    with connect(url) as conn:
+        return conn.execute(
+            """
+            SELECT q.id, q.question, q.rewritten, q.rewrite_used,
+                   q.rewrite_terms, q.variant, q.method, q.answer,
+                   q.source_counts, q.chunk_ids, q.hits, q.n_hits,
+                   q.cache_key, q.cache_namespace
+              FROM queries q
+             WHERE q.cache_key = %s
+               AND q.cache_hit = FALSE
+               AND q.error IS NULL
+               AND q.truncated = FALSE
+               AND q.answer <> ''
+               -- One negative rating on the source or any reuse invalidates
+               -- the answer. Caching must not amplify an answer a reader has
+               -- already identified as unhelpful.
+               AND NOT EXISTS (
+                   SELECT 1
+                     FROM feedback f
+                     JOIN queries rated ON rated.id = f.query_id
+                    WHERE f.rating = -1
+                      AND (rated.id = q.id OR rated.cache_source_query_id = q.id)
+               )
+             ORDER BY q.asked_at DESC
+             LIMIT 1
+            """,
+            (cache_key,),
+        ).fetchone()
 
 
 def log_feedback(query_id: int, rating: int, comment: str | None = None,

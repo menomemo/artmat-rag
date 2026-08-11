@@ -40,6 +40,7 @@ import streamlit as st
 import app.secrets  # noqa: F401  -- bridges st.secrets into os.environ
 import rag.env  # noqa: F401  -- loads .env on import
 
+from app.cache import cache_fields, hit_record, hit_to_dict, lookup
 from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import LAYER_DESCRIPTIONS, MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
@@ -122,6 +123,7 @@ def retrieve(question: str, k: int, use_rewrite: bool):
 def finish_query(
     question: str,
     variant: str,
+    k: int,
     use_rewrite: bool,
     rw,
     hits,
@@ -145,6 +147,8 @@ def finish_query(
         "answer": answer.text,
         "source_counts": source_counts,
         "chunk_ids": [h.chunk_id for h in hits],
+        "rewrite_terms": rw.terms,
+        "hits": [hit_to_dict(h) for h in hits],
         "n_hits": len(hits),
         "retrieval_ms": retrieval_ms,
         "generate_ms": generate_ms,
@@ -156,6 +160,7 @@ def finish_query(
         ),
         "truncated": answer.truncated,
         "error": None,
+        **cache_fields(question, variant, k, use_rewrite),
     }
 
     # An answer the user can already read must not be thrown away because the
@@ -175,6 +180,26 @@ def finish_query(
         "rewrite": rw,
         "retrieval_ms": retrieval_ms,
         "generate_ms": generate_ms,
+        "cache_hit": False,
+    }
+
+
+def finish_cached_query(cached, total_ms: int) -> dict:
+    """Give a cache hit its own log id so its feedback remains independent."""
+    try:
+        query_id = log_query(hit_record(cached, total_ms))
+    except Exception as exc:
+        query_id = None
+        st.warning(f"Cache hit not logged — monitoring is degraded ({exc}).")
+    return {
+        "query_id": query_id,
+        "answer": cached.answer,
+        "hits": cached.hits,
+        "rewrite": cached.rewrite,
+        "retrieval_ms": 0,
+        "generate_ms": 0,
+        "total_ms": total_ms,
+        "cache_hit": True,
     }
 
 
@@ -261,6 +286,17 @@ question = st.text_area(
 if st.button("Ask", type="primary") and question.strip():
     st.session_state.result = None
     try:
+        cache_started = time.perf_counter()
+        try:
+            cached = lookup(question.strip(), variant, k, use_rewrite)
+        except Exception:
+            cached = None
+
+        if cached is not None:
+            cache_ms = int((time.perf_counter() - cache_started) * 1000)
+            st.session_state.result = finish_cached_query(cached, cache_ms)
+            st.rerun()
+
         with st.spinner("Searching…"):
             rw, hits, retrieval_ms = retrieve(question.strip(), k, use_rewrite)
 
@@ -285,7 +321,7 @@ if st.button("Ask", type="primary") and question.strip():
         generate_ms = int((time.perf_counter() - gen_started) * 1000)
 
         st.session_state.result = finish_query(
-            question.strip(), variant, use_rewrite, rw,
+            question.strip(), variant, k, use_rewrite, rw,
             hits, answer_holder["answer"], retrieval_ms, generate_ms,
         )
         # Re-run so the page renders from session state alone. Without this the
@@ -309,9 +345,11 @@ if result:
     st.markdown(answer.text)
 
     st.caption(
-        f"{result['retrieval_ms']} ms retrieval · {result['generate_ms']} ms "
-        f"generation · {answer.input_tokens:,} in / {answer.output_tokens:,} out "
-        f"· ${estimate_cost(MODEL, answer.input_tokens, answer.output_tokens):.4f}"
+        (f"{result['total_ms']} ms exact cache · $0.0000"
+         if result.get("cache_hit") else
+         f"{result['retrieval_ms']} ms retrieval · {result['generate_ms']} ms "
+         f"generation · {answer.input_tokens:,} in / {answer.output_tokens:,} out "
+         f"· ${estimate_cost(MODEL, answer.input_tokens, answer.output_tokens):.4f}")
     )
 
     if result["query_id"] is not None:

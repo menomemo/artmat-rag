@@ -429,6 +429,24 @@ up"; Grafana reads it directly. **7 panels:**
 Feedback is one click, stored `+1`/`-1` against the query id, `LEFT JOIN`ed so
 unrated queries stay in the denominator.
 
+### Exact answer cache
+
+An identical question with identical user-visible settings reuses the newest
+complete answer from Postgres before query rewriting, retrieval, or generation
+runs. A hit therefore has zero model cost and still returns the original
+passages and chunk ids. It also writes a new query row with `cache_hit = true`
+and `cache_source_query_id` pointing to the paid source row, so its latency and
+feedback belong to this request rather than silently changing the old one.
+One negative rating on the source or any reuse removes that answer from future
+cache lookups, so a bad answer is not amplified merely because it was first.
+
+The key includes the normalised question, answer variant, passage count,
+rewrite setting, model names, and hashes of both prompts. Corpus changes cannot
+be inferred safely, so `EXACT_CACHE_NAMESPACE` is the explicit invalidation
+switch and must be bumped after reindexing. Set `EXACT_CACHE_ENABLED=false` for
+evaluation runs or debugging. Pre-cache historical rows are not reused because
+they do not record enough configuration to prove that they are equivalent.
+
 ---
 
 ## Reproducibility
