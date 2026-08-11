@@ -1,4 +1,4 @@
-# artmat-rag — build status
+# MATTER — build status
 
 Working notes for a two-day build. Delete before submission; the graded
 document is `README.md`.
