@@ -4,10 +4,10 @@ Why this exists as a second front door rather than a rewrite:
 
 The Streamlit app is the graded reference implementation and it stays exactly as
 it is. But Streamlit owns its own layout, typography, and rerun model, and the
-thing worth building next -- an interface where the *evidence horizon* of each
-source is visible rather than described -- needs a canvas, an animation frame,
-and control over every pixel. Fighting a framework for that is how you end up
-with neither a clean reference implementation nor a good interface.
+thing worth building next -- an interface where the *kind of evidence* behind a
+claim is visible rather than described -- needs control over every pixel.
+Fighting a framework for that is how you end up with neither a clean reference
+implementation nor a good interface.
 
 So: `rag/` is untouched and shared. This module adds transport, nothing else.
 Anything that looks like a decision about retrieval or prompting belongs in
@@ -43,21 +43,26 @@ from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
 from rag.search import search
 
-# How long each layer has actually been watching. This is the project's thesis
-# reduced to four numbers, and it is an editorial claim rather than a measured
-# field -- so it is stated here, in one place, where the interface can render it
-# and a reader can disagree with it.
+# What kind of evidence each layer rests on. Categorical, and every value is
+# true by the definition of the layer rather than estimated.
 #
-# A datasheet's durability claim rests on a few hundred hours in a weathering
-# cabinet. A conservation report rests on an object someone examined after it
-# had been outside for a decade. Both are honest; they are not the same
-# evidence, and an interface that lays them out at the same distance is
-# flattening the one distinction that matters most.
-EVIDENCE_HORIZON_YEARS = {
-    "manufacturer_datasheet": 0.06,   # ~500 h accelerated weathering
-    "materials_science": 0.5,         # controlled ageing, weeks to months
-    "conservation_literature": 15.0,  # examined objects, a decade or three
-    "collection_precedent": 60.0,     # what a collection has actually held
+# This replaced `EVIDENCE_HORIZON_YEARS`, four numbers -- 0.06, 0.5, 15.0, 60.0
+# -- that said how long each layer had "been watching". They were mine. Nothing
+# measured them, and the corpus cannot support them: real durations do appear in
+# the text (708 mentions across the datasheets, 474 across materials science)
+# but a datasheet's "4 hours" is demould time, not observation time, so pulling
+# them out needs a model that reads the context, not a regular expression.
+#
+# An interface driven by four invented numbers would have been fluent,
+# plausible and impossible to check -- which is the exact failure this project
+# spent its evaluation measuring. Better to say the thing that is defensible:
+# accelerated testing is not the same evidence as an examined object, and that
+# distinction needs no number to be true.
+EVIDENCE_KIND = {
+    "manufacturer_datasheet": "accelerated testing",
+    "materials_science": "controlled specimens",
+    "conservation_literature": "examined objects",
+    "collection_precedent": "held in a collection",
 }
 
 app = FastAPI(title="artmat", version="0.1")
@@ -129,7 +134,7 @@ def hit_json(hit, rank: int) -> dict:
         "text": hit.text,
         "url": hit.url,
         "score": hit.score,
-        "horizon_years": EVIDENCE_HORIZON_YEARS.get(hit.source_type),
+        "evidence_kind": EVIDENCE_KIND.get(hit.source_type),
     }
 
 
@@ -140,7 +145,7 @@ def health() -> dict:
         "model": MODEL,
         "variants": [v for v in PROMPTS if v != "no_context"],
         "db": "down" if _state.get("db_error") else "up",
-        "horizons": EVIDENCE_HORIZON_YEARS,
+        "evidence_kinds": EVIDENCE_KIND,
     }
 
 

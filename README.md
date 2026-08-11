@@ -455,24 +455,46 @@ generation, and the Opus judging pass.
 
 `app/` is the graded reference implementation and does not change. `api/` and
 `web/` are a second front door onto the same `rag/` package — a FastAPI server
-that streams answers over Server-Sent Events, and a hand-written page that
-draws what the Streamlit app can only describe.
+streaming over Server-Sent Events, and a hand-written page with no libraries.
 
-The visual argument is one mapping. A passage's horizontal position is **how
-long its kind of source has actually been watching**: a datasheet's durability
-claim rests on 500 hours in a weathering cabinet and stands at the left edge; a
-conservation report rests on an object examined after fifteen years and stands
-far to the right. When an answer spans both, the span is visible before a word
-of it is read — and when every passage piles up at one position, that is
-visible too, which is the more useful thing to notice.
+It took three attempts, and the two failures are the useful part.
 
-The colour scale is the same axis. Cold at hour zero, amber at sixty years,
-because every question this corpus answers is finally about something losing
-its colour — resin yellowing, pigment fading, silicone chalking. The page
-yellows along with its subject.
+A **logarithmic axis of coloured dots**, one per retrieved passage, positioned
+by how long its layer had been watching. Accurate and unreadable: a legend to
+learn, a log scale to understand, a hover affordance to discover — three things
+before the picture said anything. An artwork may be mysterious; a control may
+not.
 
-`EVIDENCE_HORIZON_YEARS` in `api/main.py` is an editorial claim, not a measured
-field, and it is written in one place so it can be disagreed with.
+A **book that opened**, absorbed ink and welled up answers. It looked right and
+was uncomfortable, structurally: two independent scroll regions inside a locked
+body broke the most practiced gesture on the web, a fixed spread is a container
+and containers fight variable-length text, and every question paid ~3 s of
+ceremony. Ceremony is charged once; friction is charged every time.
+
+**The interface nearly asserted four numbers nobody measured.** The third idea
+was a slider — drag your work's age forward and watch sources fall silent as
+their evidence expires. It would have run on `EVIDENCE_HORIZON_YEARS`, four
+constants written by hand. Real durations do exist in the corpus (708 mentions
+across the datasheets, 474 across materials science) but a datasheet's "4
+hours" is demould time, not observation time, so extracting them needs a model
+rather than a regex. Shipping the slider would have made the interface fluent,
+plausible and impossible to check — the precise failure this project's
+evaluation section exists to measure. The constants were deleted and replaced
+with `EVIDENCE_KIND`, four categorical strings that are true by definition of
+the layer: *accelerated testing*, *controlled specimens*, *examined objects*,
+*held in a collection*.
+
+What ships is one scrolling column with a sticky ask bar and no opening
+animation, and a single visual encoding that depends only on `source_type` — a
+field that is actually in the data. Each layer is the same translucent plastic
+at a different age: the manufacturer's is fresh out of the box, conservation's
+is visibly yellowed and crazed, the collection layer has gone amber and nearly
+opaque. The signature material of Y2K is the one everybody has personally
+watched turn yellow, so the encoding needs no legend — which is exactly what
+the first version did need.
+
+Handover notes, including a known provenance-tinting bug, are in
+[web/HANDOVER.md](web/HANDOVER.md).
 
 ```bash
 pip install -r requirements.txt -r requirements-api.txt

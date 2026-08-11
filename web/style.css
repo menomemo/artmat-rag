@@ -1,324 +1,242 @@
-/* The book.
+/* Four ages of the same translucent plastic.
  *
- * Ink is the whole idea, and it replaced an earlier one that failed for a
- * reason worth writing down. The first version encoded a source's evidence
- * horizon as a coloured dot on a logarithmic axis. It was accurate and nobody
- * could read it: you had to learn the legend, then learn that the axis was
- * logarithmic, then discover that hovering a passage lit its dot. Three things
- * to learn before the picture said anything.
+ * The encoding is the argument, and it depends only on `source_type` -- a real
+ * field -- rather than on any number about time. Two earlier versions failed:
+ * a logarithmic axis of coloured dots that needed a legend, a log scale and a
+ * hover affordance learned before it said anything; and a book, which was a
+ * container, and containers fight variable-length text. A third idea, a slider
+ * that aged your work while sources fell silent, would have run on four
+ * constants nobody measured, which is the failure this project exists to argue
+ * against.
  *
- * Ink age needs none of that. Everyone already knows that fresh writing is wet
- * and black and that old writing has gone brown and soft at the edges. So the
- * same fact -- how long this kind of source has actually been watching -- is
- * carried by something a reader decodes without being told. It is also true:
- * iron gall ink really does oxidise to brown.
+ * So: the same material at four ages.
  *
- *   manufacturer   500 hours   fresh, near-black, printed-looking
- *   materials sci  months      blue-black, a lab notebook hand
- *   conservation   15 years    brown, softened, bled slightly into the paper
- *   precedent      60 years    faintest brown, nearly gone
+ *   manufacturer   fresh out of the box   bondi blue, hard highlight, saturated
+ *   materials sci  slightly hazed         gloss gone off
+ *   conservation   visibly yellowed       hairline crazing, clarity lost
+ *   precedent      deep amber             barely translucent, still here
+ *
+ * Y2K is not a mood here, it is the evidence. The signature material of that
+ * moment -- translucent coloured ABS, the iMac, the Game Boy Color -- is the
+ * one everyone has personally watched turn urine-yellow and go brittle, from
+ * brominated flame retardants and UV. Encoding age in parchment and iron gall
+ * ink asks the reader to know something. Encoding it in this asks them to
+ * remember an old console. (The other half of the joke is that Y2K itself was
+ * a system that could not represent the future, having saved two bytes on the
+ * assumption that time would not pass -- which is the datasheet's 500 hours.)
  */
 
 :root {
-  --room: #efece3;
-  --paper: #f6f2e7;
-  --paper-edge: #e6dfcc;
-  --board: #c8bda6;
+  --bg: #dfe6ea;
+  --bg-2: #c9d6dd;
 
-  --ink-fresh: #1b1b1d;   /* manufacturer   */
-  --ink-lab:   #2c3a5c;   /* materials sci  */
-  --ink-aged:  #6b4a2a;   /* conservation   */
-  --ink-faint: #8f775c;   /* precedent      */
+  --panel: #f7fafb;          /* solid, for text */
+  --text: #16232b;
+  --text-soft: #4d6470;
 
-  --hand: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  /* The four ages. `tint` is the plastic, `edge` its lit bevel. */
+  --p0: #7fd4e8;  --p0-edge: #d6f4fb;   /* fresh, bondi              */
+  --p1: #9fd0cd;  --p1-edge: #dcefed;   /* hazed                     */
+  --p2: #d9c07a;  --p2-edge: #f0e4bd;   /* yellowed                  */
+  --p3: #b98d43;  --p3-edge: #dcc189;   /* amber, nearly opaque      */
+
+  --ui: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --measure: 40rem;
 }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
-html, body {
-  margin: 0; padding: 0; height: 100%;
-  background: var(--room);
-  color: var(--ink-fresh);
-  font-family: var(--hand);
-  font-size: 16px;
-  line-height: 1.6;
-  overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-}
+#defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 .sr {
   position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
 
-#air { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+html { scroll-behavior: smooth; }
 
-/* --- stage ---------------------------------------------------------------- */
-
-#stage {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  /* Perspective on the stage rather than the book, so the book's own
-     transforms compose without each one resetting the camera. */
-  perspective: 2400px;
-}
-
-#book {
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 1400ms cubic-bezier(0.22, 0.61, 0.28, 1);
-  width: min(46vw, 30rem);
-  aspect-ratio: 3 / 4;
-}
-
-/* Closed: floating, small, an object across the room. */
-body[data-state="closed"] #book {
-  animation: float 7s ease-in-out infinite;
-}
-@keyframes float {
-  0%, 100% { transform: translateY(-0.6rem) rotateX(6deg) rotateZ(-1.2deg); }
-  50%      { transform: translateY(0.6rem) rotateX(4deg) rotateZ(-0.4deg); }
-}
-
-/* Open: the book comes to you and stops moving. A surface that bobs is a
-   surface you cannot write on. */
-body[data-state="open"] #book,
-body[data-state="opening"] #book {
-  animation: none;
-  width: min(96vw, 78rem);
-  aspect-ratio: 16 / 10;
-  transform: none;
-}
-
-/* --- cover ---------------------------------------------------------------- */
-
-#cover {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  border-radius: 2px 6px 6px 2px;
+body {
+  margin: 0;
+  /* The page scrolls. Nothing else does. The book version had two independent
+     scroll regions inside a locked body, which meant aiming the cursor at the
+     correct half before the most practiced gesture on the web would work. */
   background:
-    linear-gradient(105deg, rgba(255,255,255,0.16), rgba(0,0,0,0.12)),
-    var(--board);
-  box-shadow:
-    0 1.4rem 3rem rgba(90, 78, 58, 0.28),
-    inset 0 0 0 1px rgba(255,255,255,0.18);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transform-origin: left center;
-  transition: transform 1300ms cubic-bezier(0.3, 0.7, 0.2, 1),
-              box-shadow 1300ms ease, opacity 300ms ease 1000ms;
-  backface-visibility: hidden;
-}
-#cover:focus-visible { outline: 2px solid var(--ink-aged); outline-offset: 4px; }
-
-.emboss {
-  font-size: 0.82rem;
-  letter-spacing: 0.34em;
-  text-transform: lowercase;
-  text-align: center;
-  line-height: 2.1;
-  color: rgba(78, 64, 44, 0.55);
-  /* Debossed rather than printed: the highlight sits below the shadow, which
-     is what a stamped cover does to light. */
-  text-shadow: 0 1px 0 rgba(255,255,255,0.35), 0 -1px 0 rgba(0,0,0,0.18);
+    radial-gradient(120% 80% at 50% 0%, #eef4f6 0%, var(--bg) 45%, var(--bg-2) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-body[data-state="opening"] #cover,
-body[data-state="open"] #cover {
-  transform: rotateY(-168deg);
-  box-shadow: 0 0.4rem 2rem rgba(90, 78, 58, 0.12);
-}
-body[data-state="open"] #cover { opacity: 0; pointer-events: none; }
+/* --- header ---------------------------------------------------------------- */
 
-/* --- spread --------------------------------------------------------------- */
-
-#spread {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  opacity: 0;
-  transition: opacity 700ms ease 500ms;
-  border-radius: 3px;
-  box-shadow: 0 1.6rem 4rem rgba(90, 78, 58, 0.22);
-  overflow: hidden;
-}
-body[data-state="opening"] #spread,
-body[data-state="open"] #spread { opacity: 1; }
-body[data-state="open"] #spread { aria-hidden: false; }
-
-.page {
-  position: relative;
-  background: var(--paper);
-  overflow: hidden;
-}
-.page.left  { box-shadow: inset -2.5rem 0 3rem -2.5rem rgba(120, 100, 70, 0.35); }
-.page.right { box-shadow: inset  2.5rem 0 3rem -2.5rem rgba(120, 100, 70, 0.35); }
-
-.page-inner {
-  position: absolute;
-  inset: 0;
-  padding: clamp(1.5rem, 3.4vw, 3.2rem);
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(140,120,90,0.35) transparent;
-}
-.page-inner::-webkit-scrollbar { width: 6px; }
-.page-inner::-webkit-scrollbar-thumb {
-  background: rgba(140,120,90,0.3); border-radius: 3px;
+#top {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 5rem 1.5rem 1.5rem;
 }
 
-/* The gutter is a shadow, not a line. A drawn line reads as two pages side by
-   side; a shadow reads as one sheet folded. */
-#gutter {
-  position: absolute;
-  top: 0; bottom: 0; left: 50%;
-  width: 5rem;
-  margin-left: -2.5rem;
-  pointer-events: none;
-  background: linear-gradient(
-    to right,
-    rgba(120,100,70,0) 0%,
-    rgba(120,100,70,0.10) 38%,
-    rgba(90,74,48,0.20) 50%,
-    rgba(120,100,70,0.10) 62%,
-    rgba(120,100,70,0) 100%
-  );
+#top h1 {
+  margin: 0 0 0.9rem;
+  font-size: clamp(1.9rem, 5.2vw, 2.9rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  /* Chrome, but only here, and darker than a chrome gradient wants to be.
+     The first attempt used the canonical stops -- white, pale blue, a hard
+     mid-line, pale blue -- which is what chrome looked like in 1999 and which
+     assumes a dark background. On this pale page the top two thirds of every
+     letter vanished. The gradient now starts at a mid tone and the darkest
+     stop carries most of the height, so the word reads first and the metal
+     reads second. Gloss is allowed on a six-word headline and nowhere near a
+     paragraph. */
+  background: linear-gradient(180deg,
+    #86b4c9 0%, #ffffff 14%, #2f6d88 34%, #0d3d52 56%, #58a0bd 78%, #17475c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* A dark seat under the letterforms, so they hold an edge against the
+     lightest part of the background wash. */
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.85))
+          drop-shadow(0 1px 2px rgba(20, 60, 80, 0.35));
 }
 
-/* --- writing -------------------------------------------------------------- */
+#top p {
+  margin: 0;
+  max-width: 32rem;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+}
+#top strong { color: var(--text); font-weight: 600; }
+
+/* --- the bar --------------------------------------------------------------- */
+
+#bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 0.85rem 1.5rem;
+  background: rgba(233, 240, 243, 0.78);
+  backdrop-filter: blur(14px) saturate(1.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  border-bottom: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 1px 0 rgba(90,120,135,0.16);
+}
 
 form#ask {
+  max-width: var(--measure);
+  margin: 0 auto;
   display: flex;
   gap: 0.6rem;
-  align-items: baseline;
-  border-bottom: 1px solid rgba(120, 100, 70, 0.28);
-  padding-bottom: 0.35rem;
 }
 
+/* Recessed well: highlight on the bottom edge, shadow on the top, which is
+   what a moulded depression does to light. The button is the same gradient
+   inverted, so it reads as raised without a border. */
 #q {
   flex: 1;
-  border: 0; background: transparent;
+  min-width: 0;
   font: inherit;
-  font-size: clamp(1rem, 1.5vw, 1.25rem);
-  color: var(--ink-fresh);
-  padding: 0.15rem 0;
+  font-size: 1rem;
+  color: var(--text);
+  padding: 0.62rem 0.9rem;
+  border: 1px solid rgba(120, 155, 172, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7eef1 0%, #fbfdfe 62%);
+  box-shadow:
+    inset 0 2px 3px rgba(70, 105, 125, 0.22),
+    inset 0 -1px 0 rgba(255,255,255,0.9);
 }
-#q:focus { outline: none; }
-#q::placeholder { color: rgba(110, 92, 66, 0.42); }
-
-/* Wet ink: what you have written and not yet committed sits slightly proud of
-   the paper and catches light. It is the only thing on either page that is
-   not yet absorbed. */
-#q, #q::placeholder { transition: color 300ms ease; }
-body[data-wet="1"] #q {
-  text-shadow: 0 0 0.6px rgba(0,0,0,0.55), 0 1px 1.5px rgba(40,40,60,0.25);
+#q:focus {
+  outline: none;
+  border-color: #4fa8c8;
+  box-shadow:
+    inset 0 2px 3px rgba(70,105,125,0.18),
+    0 0 0 3px rgba(79, 168, 200, 0.28);
 }
+#q::placeholder { color: #8ba3b0; }
 
 #go {
-  border: 0; background: transparent;
-  font: inherit; font-size: 1.1rem;
-  color: rgba(110, 92, 66, 0.5);
-  cursor: pointer; padding: 0 0.2rem;
-  transition: color 200ms ease, transform 200ms ease;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #10323f;
+  padding: 0.62rem 1.5rem;
+  border: 1px solid rgba(90, 150, 175, 0.7);
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffffff 0%, var(--p0) 48%, #52b2cd 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -2px 4px rgba(20, 80, 100, 0.28),
+    0 1px 2px rgba(40, 90, 110, 0.3);
 }
-#go:hover { color: var(--ink-fresh); transform: translateY(1px); }
-#go[disabled] { opacity: 0.3; cursor: default; }
+#go:hover { filter: brightness(1.06); }
+#go:active { box-shadow: inset 0 2px 5px rgba(20,80,100,0.4); }
+#go[disabled] { opacity: 0.45; cursor: default; filter: saturate(0.5); }
 
-#rewrite {
-  margin: 0.9rem 0 0;
-  font-size: 0.82rem;
-  color: rgba(90, 74, 52, 0.75);
-  min-height: 1.4em;
-}
-#rewrite .was {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  opacity: 0.4;
+/* --- main ------------------------------------------------------------------ */
+
+main {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 8rem;
 }
 
 #examples {
-  list-style: none; margin: 1.4rem 0 0; padding: 0;
-  display: flex; flex-direction: column; gap: 0.45rem;
+  list-style: none; margin: 0 0 1.5rem; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
 }
 #examples button {
-  border: 0; background: transparent; font: inherit;
-  font-size: 0.82rem; text-align: left; padding: 0;
-  color: rgba(110, 92, 66, 0.55);
-  cursor: pointer; transition: color 180ms ease;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #2c4c5a;
+  padding: 0.34rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.85);
+  border-radius: 999px;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.35));
+  box-shadow: 0 1px 2px rgba(70,105,125,0.16);
 }
-#examples button:hover { color: var(--ink-aged); }
+#examples button:hover { background: #fff; }
 body[data-asked="1"] #examples { display: none; }
 
-/* --- slips ---------------------------------------------------------------- */
-
-#slips { margin-top: 1.8rem; }
-
-.slip {
-  margin-bottom: 0.9rem;
-  padding: 0.55rem 0 0.55rem 0.75rem;
-  border-left: 2px solid currentColor;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  opacity: 0;
-  transform: translateY(6px);
-  animation: bleed 900ms ease forwards;
+#rewrite {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-soft);
 }
-@keyframes bleed { to { opacity: 1; transform: none; } }
+#rewrite .was { text-decoration: line-through; opacity: 0.45; }
 
-/* The four inks. Age is carried by hue, weight and blur together, because a
-   single channel reads as a palette and three read as time. */
-.slip[data-layer="manufacturer_datasheet"]  { color: var(--ink-fresh); }
-.slip[data-layer="materials_science"]       { color: var(--ink-lab); }
-.slip[data-layer="conservation_literature"] {
-  color: var(--ink-aged);
-  filter: blur(0.12px);
-}
-.slip[data-layer="collection_precedent"] {
-  color: var(--ink-faint);
-  filter: blur(0.25px);
-  opacity: 0.85;
-}
-.slip .who {
-  display: block;
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.6;
-  margin-bottom: 0.25rem;
-}
-.slip .ttl { cursor: pointer; }
-.slip .full { margin-top: 0.5rem; opacity: 0.85; }
-.slip .cid {
-  display: block; margin-top: 0.4rem;
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 0.62rem; opacity: 0.45;
-}
+/* --- answer ---------------------------------------------------------------- */
 
-/* --- the answer ----------------------------------------------------------- */
+/* Solid panel. Deliberately not translucent: this is the one region where
+   legibility outranks the material. */
+#answer {
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.9);
+  border-radius: 14px;
+  padding: 1.5rem 1.6rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1),
+    0 2px 10px rgba(70, 105, 125, 0.16);
+  font-size: 1rem;
+}
+#answer p { margin: 0 0 1rem; }
+#answer p:last-child { margin-bottom: 0; }
+#answer strong { font-weight: 650; }
 
-#answer { font-size: clamp(0.92rem, 1.15vw, 1.02rem); }
-#answer p { margin: 0 0 0.95rem; }
-#answer p:first-child { margin-top: 0; }
-#answer strong { font-weight: 600; }
-
-/* Answer text is tinted by the source it names, using the attribution phrases
-   the `arbitrated` prompt already requires ("the manufacturer states", "a
-   conservation study found"). This is a heuristic over the model's own words,
-   not a claim from the retrieval layer -- so it is deliberately faint, and the
-   authoritative provenance stays the chunk ids on the slips. */
-#answer .src-manufacturer_datasheet  { color: var(--ink-fresh); }
-#answer .src-materials_science       { color: var(--ink-lab); }
-#answer .src-conservation_literature { color: var(--ink-aged); }
-#answer .src-collection_precedent    { color: var(--ink-faint); }
+/* Sentence tinting from the attribution phrases the `arbitrated` prompt already
+   requires. Faint on purpose, and allowed to miss -- an untinted sentence looks
+   like ordinary text, which is the right failure. Provenance of record stays
+   the chunk ids on the specimens. */
+#answer .src-manufacturer_datasheet  { color: #0f5a72; }
+#answer .src-materials_science       { color: #2b6a63; }
+#answer .src-conservation_literature { color: #7a5a16; }
+#answer .src-collection_precedent    { color: #7d5a22; }
 
 #answer .cursor {
   display: inline-block; width: 0.45em;
@@ -328,60 +246,115 @@ body[data-asked="1"] #examples { display: none; }
 @keyframes blink { 50% { opacity: 0; } }
 
 #meta {
-  margin-top: 1.6rem;
-  font-size: 0.68rem; letter-spacing: 0.06em;
-  color: rgba(110, 92, 66, 0.5);
+  margin: 0.9rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #6f8894;
   font-variant-numeric: tabular-nums;
 }
 
 #error {
-  margin-top: 1.2rem; padding: 0.7rem 0.9rem;
-  border-left: 2px solid var(--ink-aged);
-  background: rgba(107, 74, 42, 0.06);
-  font-size: 0.85rem; color: var(--ink-aged);
+  margin: 1rem 0 0;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  background: #fdf1e4;
+  border: 1px solid #e8c9a0;
+  color: #7a4a12;
+  font-size: 0.9rem;
 }
 
-/* --- hint ----------------------------------------------------------------- */
+/* --- specimens ------------------------------------------------------------- */
 
-#hint {
-  position: fixed;
-  left: 0; right: 0; bottom: 8vh;
-  z-index: 2;
-  text-align: center;
+#specimens { margin-top: 2.5rem; }
+#specimens h2 {
+  margin: 0 0 0.9rem;
   font-size: 0.72rem;
-  letter-spacing: 0.28em;
-  text-transform: lowercase;
-  color: rgba(110, 92, 66, 0.4);
-  animation: pulse 3.4s ease-in-out infinite;
-  pointer-events: none;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6f8894;
 }
-@keyframes pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 0.8; } }
-body:not([data-state="closed"]) #hint { opacity: 0; animation: none; transition: opacity 400ms; }
 
-@media (max-width: 48rem) {
-  /* One page at a time below tablet width. A two-page spread on a phone is
-     two unreadable columns, and the metaphor is not worth that. */
-  #spread { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-  #gutter { display: none; }
-  .page.left  { box-shadow: inset 0 -2rem 2rem -2rem rgba(120,100,70,0.3); }
-  .page.right { box-shadow: inset 0  2rem 2rem -2rem rgba(120,100,70,0.3); }
-  body[data-state="open"] #book,
-  body[data-state="opening"] #book { aspect-ratio: 3 / 4.4; width: 94vw; }
+/* One chip of plastic per retrieved passage. Age is carried by four channels
+   at once -- tint, translucency, bevel contrast and crazing -- because one
+   channel reads as a colour scheme and four read as a material that has been
+   somewhere. */
+.spec {
+  position: relative;
+  margin-bottom: 0.7rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.8);
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.85) 0%,
+    rgba(255,255,255,0.18) 38%,
+    rgba(255,255,255,0.05) 100%),
+    var(--tint, var(--p0));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -2px 6px rgba(20, 60, 80, 0.16),
+    0 2px 6px rgba(70, 105, 125, 0.18);
+}
+
+.spec[data-layer="manufacturer_datasheet"]  { --tint: var(--p0); }
+.spec[data-layer="materials_science"]       { --tint: var(--p1); }
+.spec[data-layer="conservation_literature"] {
+  --tint: var(--p2);
+  filter: url(#craze);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -2px 6px rgba(90, 70, 20, 0.22),
+    0 2px 6px rgba(110, 95, 55, 0.2);
+}
+.spec[data-layer="collection_precedent"] {
+  --tint: var(--p3);
+  filter: url(#craze-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.38),
+    inset 0 -3px 8px rgba(70, 50, 10, 0.3),
+    0 2px 6px rgba(100, 80, 40, 0.24);
+}
+
+.spec .who {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(16, 40, 52, 0.62);
+  margin-bottom: 0.25rem;
+}
+.spec .ttl {
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #10262f;
+}
+.spec .ttl:hover { text-decoration: underline; }
+.spec .full {
+  margin-top: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  /* The passage itself lands on solid white inside the chip. You may look at
+     plastic; you must be able to read evidence. */
+  background: rgba(255,255,255,0.92);
+  font-size: 0.85rem;
+  color: #21323b;
+}
+.spec .cid {
+  display: block; margin-top: 0.5rem;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.66rem;
+  color: #71858f;
+}
+
+@media (max-width: 30rem) {
+  #top { padding-top: 3rem; }
+  form#ask { gap: 0.4rem; }
+  #go { padding: 0.62rem 1rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #book, #cover, #spread { transition-duration: 1ms; }
-  body[data-state="closed"] #book { animation: none; }
-  #hint { animation: none; }
-  .slip { animation-duration: 1ms; }
+  html { scroll-behavior: auto; }
   #answer .cursor { animation: none; }
-}
-
-/* The question, after it has been absorbed and come back up. Styled here
-   rather than inline in app.js so the ink stays in one file. */
-#asked-line {
-  margin: 0 0 0.5rem;
-  font-size: clamp(1rem, 1.5vw, 1.25rem);
-  color: var(--ink-fresh);
-  opacity: 0.8;
+  /* The crazing stays: it is a material state, not motion. */
 }

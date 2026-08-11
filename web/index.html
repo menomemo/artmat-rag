@@ -3,65 +3,74 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Book of Long Looks — artmat</title>
+<title>it was clear when it shipped — artmat</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body data-state="closed">
+<body>
 
-<!-- Atmosphere only: an overexposed empty room, generated. Nothing here is an
-     image, so the page weighs what its text weighs. -->
-<canvas id="air" aria-hidden="true"></canvas>
+<!-- Crazing, generated. The hairline cracks in the aged panels are computed
+     from noise rather than loaded as a texture, which is why this whole front
+     end is three files and no assets. -->
+<svg id="defs" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="craze" x="-4%" y="-4%" width="108%" height="108%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.9"
+                    numOctaves="3" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.4"
+                         xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="craze-deep" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.015 1.1"
+                    numOctaves="4" seed="19" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"
+                         xChannelSelector="R" yChannelSelector="G"
+                         result="d"/>
+      <feGaussianBlur in="d" stdDeviation="0.25"/>
+    </filter>
+  </defs>
+</svg>
 
-<!-- The book floats while it is closed, because a closed book is an invitation
-     and an invitation should be an object. It stops floating the moment it
-     opens: from then on it is a surface you write on, and a surface that
-     bobs is a surface you cannot use. -->
-<div id="stage">
-  <div id="book">
-    <div id="cover" role="button" tabindex="0"
-         aria-label="Open the book">
-      <span class="emboss">the book of<br>long looks</span>
-    </div>
+<header id="top">
+  <h1>it was clear when it shipped.</h1>
+  <p>
+    Four kinds of source answer questions about making things, and they do not
+    agree. What separates them is not who is right — it is
+    <strong>what each one is in a position to have seen</strong>. A datasheet
+    has been in a cabinet. A conservation report has been outside.
+  </p>
+</header>
 
-    <div id="spread" aria-hidden="true">
-      <div class="page left">
-        <div class="page-inner">
-          <form id="ask" autocomplete="off">
-            <label for="q" class="sr">Your question</label>
-            <input id="q" type="text" maxlength="2000"
-                   placeholder="write your question here">
-            <button type="submit" id="go" aria-label="Let the ink sink">↓</button>
-          </form>
-
-          <p id="rewrite" hidden></p>
-
-          <ul id="examples">
-            <li><button type="button">will my cast resin sculpture go yellow outdoors</button></li>
-            <li><button type="button">how long can I work with the silicone before it sets</button></li>
-            <li><button type="button">cast aluminium or stainless steel for a piece by the sea</button></li>
-          </ul>
-
-          <!-- The retrieved passages, pasted in like slips in a research
-               notebook. Each is written in the ink of its own source, and the
-               ink is aged by how long that source has been watching. -->
-          <div id="slips"></div>
-        </div>
-      </div>
-
-      <div class="page right">
-        <div class="page-inner">
-          <article id="answer"></article>
-          <p id="meta" hidden></p>
-          <p id="error" hidden></p>
-        </div>
-      </div>
-
-      <div id="gutter" aria-hidden="true"></div>
-    </div>
-  </div>
+<!-- Sticky, so the one thing you came to do is never scrolled away from. -->
+<div id="bar">
+  <form id="ask" autocomplete="off">
+    <label for="q" class="sr">Your question</label>
+    <input id="q" type="text" maxlength="2000"
+           placeholder="what are you trying to make, avoid, or fix">
+    <button type="submit" id="go">ask</button>
+  </form>
 </div>
 
-<p id="hint">click the book</p>
+<main>
+  <ul id="examples">
+    <li><button type="button">will my cast resin sculpture go yellow outdoors</button></li>
+    <li><button type="button">how long can I work with the silicone before it sets</button></li>
+    <li><button type="button">cast aluminium or stainless steel for a piece by the sea</button></li>
+  </ul>
+
+  <p id="rewrite" hidden></p>
+
+  <!-- The answer sits on a solid panel, never on glass. Y2K's failure mode is
+       beautiful chrome you cannot read; the gloss is allowed on the frame and
+       nowhere near a paragraph. -->
+  <article id="answer" hidden></article>
+  <p id="meta" hidden></p>
+  <p id="error" hidden></p>
+
+  <section id="specimens" hidden>
+    <h2>what it was built from</h2>
+    <div id="specimen-list"></div>
+  </section>
+</main>
 
 <script src="app.js"></script>
 </body>
