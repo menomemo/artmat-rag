@@ -37,11 +37,25 @@ from pydantic import BaseModel, Field
 
 import rag.env  # noqa: F401  -- loads .env on import
 
+from app.cache import cache_fields, hit_record, hit_to_dict, lookup
 from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
-from rag.search import search
+from rag.search import (
+    CHUNK_TYPES,
+    COLLECTION_MATERIALS,
+    FILTER_YEAR_MAX,
+    FILTER_YEAR_MIN,
+    LITERATURE_DOMAINS,
+    MANUFACTURER_CATEGORIES,
+    PRODUCTION_METHOD,
+    PRODUCTION_REWRITE_METHOD,
+    SOURCE_TYPES,
+    SearchFilters,
+    search,
+)
+from rag.route import COMPLEX_MODEL, SIMPLE_MODEL, route_question
 
 # What kind of evidence each layer rests on. Categorical, and every value is
 # true by the definition of the layer rather than estimated.
@@ -65,7 +79,7 @@ EVIDENCE_KIND = {
     "collection_precedent": "held in a collection",
 }
 
-app = FastAPI(title="artmat", version="0.1")
+app = FastAPI(title="MATTER", version="0.1")
 
 # The browser front end is served from a different origin (Cloudflare Pages in
 # production, a file server in development), so CORS is not optional. Origins
@@ -99,7 +113,7 @@ def startup() -> None:
     ones the first request will actually use instead of a second copy.
     """
     _state["qdrant"] = qdrant_connect()
-    search(_state["qdrant"], "warm", method="hybrid", limit=1)
+    search(_state["qdrant"], "warm", method=PRODUCTION_METHOD, limit=1)
     try:
         init_schema()
         _state["db_error"] = None
@@ -107,11 +121,33 @@ def startup() -> None:
         _state["db_error"] = str(exc)
 
 
+class SearchFilterRequest(BaseModel):
+    source_types: list[str] = Field(default_factory=list, max_length=4)
+    chunk_types: list[str] = Field(default_factory=list, max_length=4)
+    categories: list[str] = Field(default_factory=list, max_length=14)
+    domains: list[str] = Field(default_factory=list, max_length=6)
+    materials: list[str] = Field(default_factory=list, max_length=15)
+    year_from: int | None = None
+    year_to: int | None = None
+
+    def to_search_filters(self) -> SearchFilters:
+        return SearchFilters(
+            source_types=tuple(self.source_types),
+            chunk_types=tuple(self.chunk_types),
+            categories=tuple(self.categories),
+            domains=tuple(self.domains),
+            materials=tuple(self.materials),
+            year_from=self.year_from,
+            year_to=self.year_to,
+        )
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     variant: str = "arbitrated"
     k: int = Field(default=8, ge=1, le=16)
     rewrite: bool = True
+    filters: SearchFilterRequest = Field(default_factory=SearchFilterRequest)
 
 
 class FeedbackRequest(BaseModel):
@@ -143,9 +179,24 @@ def health() -> dict:
     return {
         "ok": True,
         "model": MODEL,
+        "models": {"simple": SIMPLE_MODEL, "complex": COMPLEX_MODEL},
         "variants": [v for v in PROMPTS if v != "no_context"],
         "db": "down" if _state.get("db_error") else "up",
         "evidence_kinds": EVIDENCE_KIND,
+    }
+
+
+@app.get("/api/filters")
+def filter_options() -> dict:
+    """Values present in the indexed corpus, for any current or future UI."""
+    return {
+        "source_types": SOURCE_TYPES,
+        "chunk_types": CHUNK_TYPES,
+        "categories": MANUFACTURER_CATEGORIES,
+        "domains": LITERATURE_DOMAINS,
+        "materials": COLLECTION_MATERIALS,
+        "year": {"min": FILTER_YEAR_MIN, "max": FILTER_YEAR_MAX},
+        "semantics": "OR within a field; AND between fields",
     }
 
 
@@ -153,27 +204,97 @@ def health() -> dict:
 async def ask(req: AskRequest):
     if req.variant not in PROMPTS:
         raise HTTPException(400, f"unknown variant {req.variant!r}")
-
-    qdrant = _state.get("qdrant")
-    if qdrant is None:
-        raise HTTPException(503, "not ready")
+    try:
+        filters = req.filters.to_search_filters()
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
     async def events():
         loop = asyncio.get_running_loop()
         question = req.question.strip()
 
+        cache_started = time.perf_counter()
+        try:
+            cached = await loop.run_in_executor(
+                None,
+                lambda: lookup(
+                    question, req.variant, req.k, req.rewrite, filters
+                ),
+            )
+        except Exception:
+            # The cache is an optimisation backed by the optional query log.
+            # A sleeping Postgres must not turn a working RAG request into 503.
+            cached = None
+
+        if cached is not None:
+            cache_ms = int((time.perf_counter() - cache_started) * 1000)
+            yield sse("rewrite", {
+                "original": cached.rewrite.original,
+                "rewritten": cached.rewrite.rewritten,
+                "used": cached.rewrite.used,
+                "terms": cached.rewrite.terms,
+                "retrieval_ms": 0,
+            })
+            yield sse("hits", {
+                "hits": [hit_json(hit, i) for i, hit in enumerate(cached.hits)]
+            })
+            yield sse("route", {
+                "tier": cached.route.tier,
+                "model": cached.answer.model,
+                "reason": cached.route.reason,
+            })
+            yield sse("token", {"text": cached.answer.text})
+
+            query_id = None
+            try:
+                query_id = await loop.run_in_executor(
+                    None, log_query, hit_record(cached, cache_ms)
+                )
+            except Exception:
+                query_id = None
+            yield sse("done", {
+                "query_id": query_id,
+                "retrieval_ms": 0,
+                "generate_ms": 0,
+                "total_ms": cache_ms,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cost_usd": 0,
+                "truncated": False,
+                "source_counts": cached.source_counts,
+                "cache_hit": True,
+                "cache_source_query_id": cached.source_query_id,
+                "model": cached.answer.model,
+                "route_tier": cached.route.tier,
+                "route_reason": cached.route.reason,
+            })
+            return
+
+        qdrant = _state.get("qdrant")
+        if qdrant is None:
+            yield sse("error", {"message": "not ready"})
+            return
+
         started = time.perf_counter()
         if req.rewrite:
             rw = await loop.run_in_executor(None, rewrite, question)
             hits = await loop.run_in_executor(
-                None, lambda: search_rewritten(qdrant, rw, limit=req.k, rerank=False)
+                None,
+                lambda: search_rewritten(
+                    qdrant, rw, limit=req.k, rerank=False, filters=filters
+                ),
             )
         else:
             rw = Rewrite(original=question, rewritten=question, used=False)
             hits = await loop.run_in_executor(
-                None, lambda: search(qdrant, question, method="hybrid", limit=req.k)
+                None,
+                lambda: search(
+                    qdrant, question, method=PRODUCTION_METHOD, limit=req.k,
+                    filters=filters,
+                ),
             )
         retrieval_ms = int((time.perf_counter() - started) * 1000)
+        decision = route_question(question, hits, req.variant)
 
         # The rewrite goes out before a single answer token. It is where a wrong
         # answer usually starts, and a reader who sees "pot life" appear knows
@@ -184,6 +305,11 @@ async def ask(req: AskRequest):
             "used": rw.used, "terms": rw.terms, "retrieval_ms": retrieval_ms,
         })
         yield sse("hits", {"hits": [hit_json(h, i) for i, h in enumerate(hits)]})
+        yield sse("route", {
+            "tier": decision.tier,
+            "model": decision.model,
+            "reason": decision.reason,
+        })
 
         # `stream()` is a blocking generator, so it runs on a worker thread and
         # hands pieces back through a queue. Iterating it directly here would
@@ -194,7 +320,9 @@ async def ask(req: AskRequest):
 
         def pump():
             try:
-                for piece in stream(question, hits, req.variant):
+                for piece in stream(
+                    question, hits, req.variant, model=decision.model
+                ):
                     loop.call_soon_threadsafe(queue.put_nowait, piece)
             except Exception as exc:
                 loop.call_soon_threadsafe(queue.put_nowait, exc)
@@ -226,7 +354,7 @@ async def ask(req: AskRequest):
         for hit in hits:
             source_counts[hit.source_type] = source_counts.get(hit.source_type, 0) + 1
 
-        cost = estimate_cost(MODEL, answer.input_tokens, answer.output_tokens)
+        cost = estimate_cost(answer.model, answer.input_tokens, answer.output_tokens)
         query_id = None
         try:
             query_id = await loop.run_in_executor(None, log_query, {
@@ -234,10 +362,12 @@ async def ask(req: AskRequest):
                 "rewritten": rw.rewritten,
                 "rewrite_used": rw.used,
                 "variant": req.variant,
-                "method": "rewrite_hybrid" if req.rewrite else "hybrid",
+                "method": PRODUCTION_REWRITE_METHOD if req.rewrite else PRODUCTION_METHOD,
                 "answer": answer.text,
                 "source_counts": source_counts,
                 "chunk_ids": [h.chunk_id for h in hits],
+                "rewrite_terms": rw.terms,
+                "hits": [hit_to_dict(h) for h in hits],
                 "n_hits": len(hits),
                 "retrieval_ms": retrieval_ms,
                 "generate_ms": generate_ms,
@@ -247,6 +377,13 @@ async def ask(req: AskRequest):
                 "cost_usd": cost,
                 "truncated": answer.truncated,
                 "error": None,
+                **cache_fields(
+                    question, req.variant, req.k, req.rewrite, filters
+                ),
+                "filters": filters.as_dict(),
+                "generate_model": answer.model,
+                "route_tier": decision.tier,
+                "route_reason": decision.reason,
             })
         except Exception:
             # Same rule as the Streamlit app: an answer the reader can already
@@ -264,6 +401,10 @@ async def ask(req: AskRequest):
             "cost_usd": round(cost, 6),
             "truncated": answer.truncated,
             "source_counts": source_counts,
+            "cache_hit": False,
+            "model": answer.model,
+            "route_tier": decision.tier,
+            "route_reason": decision.reason,
         })
 
     return StreamingResponse(
