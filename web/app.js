@@ -493,17 +493,22 @@ function positionWindow(windowElement, proposedX, proposedY) {
   const state = stateFor(windowElement);
   const handle = windowElement.querySelector(".drag-handle");
   ensureWindowGeometry(windowElement);
-  state.x = proposedX;
-  state.y = proposedY;
-  applyPosition(windowElement);
-
-  const rect = handle.getBoundingClientRect();
-  const margin = 8;
+  const windowRect = windowElement.getBoundingClientRect();
+  const handleHeight = handle.getBoundingClientRect().height || 28;
+  const visibleTitleWidth = Math.min(56, windowRect.width);
+  const visibleTitleHeight = Math.min(10, handleHeight);
   const taskbarTop = window.innerHeight - 48;
-  if (rect.left < margin) state.x += margin - rect.left;
-  if (rect.right > window.innerWidth - margin) state.x -= rect.right - (window.innerWidth - margin);
-  if (rect.top < margin) state.y += margin - rect.top;
-  if (rect.bottom > taskbarTop) state.y -= rect.bottom - taskbarTop;
+
+  // Win95-style windows may sit mostly off-screen. Keep only a small piece of
+  // the title bar reachable so the user can always drag the window back.
+  state.x = Math.max(
+    visibleTitleWidth - windowRect.width,
+    Math.min(proposedX, window.innerWidth - visibleTitleWidth),
+  );
+  state.y = Math.max(
+    visibleTitleHeight - handleHeight,
+    Math.min(proposedY, taskbarTop - visibleTitleHeight),
+  );
   applyPosition(windowElement);
 }
 
@@ -726,12 +731,12 @@ function applyInitialDesktopCascade() {
   // stack of Win95 error dialogs. Sizes stay inside the current viewport so
   // the composition is intentional rather than overflow-driven.
   const startX = 108;
-  const baseWidth = Math.min(560, window.innerWidth - startX - 16);
+  const baseWidth = Math.min(520, window.innerWidth - startX - 16);
   const availableHeight = window.innerHeight - 82;
   const stackX = Math.max(118, window.innerWidth - 497);
   const stackY = Math.max(190, Math.min(300, window.innerHeight - 330));
   const cascade = [
-    ["artmat", 0, 18, baseWidth, Math.min(500, availableHeight), 110],
+    ["artmat", 0, 18, baseWidth, Math.min(450, availableHeight), 110],
     ["examples", stackX - startX, stackY, Math.min(460, baseWidth - 34), Math.min(260, availableHeight - 70), 120],
     ["palette", stackX - startX + 14, stackY + 22, Math.min(340, baseWidth - 72), 200, 130],
     ["font", stackX - startX + 28, stackY + 44, Math.min(360, baseWidth - 86), 210, 140],

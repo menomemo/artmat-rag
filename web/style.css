@@ -14,6 +14,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Neo Castel";
+  src: url("fonts/candidates/Neo-castel.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #d6d6d6;
   --bg-grid: rgba(71, 76, 67, 0.09);
@@ -262,18 +270,6 @@ body.is-thinking, body.is-thinking * { cursor: var(--pixel-thinking) !important;
   padding: clamp(1.4rem, 4vh, 3rem) clamp(1.6rem, 5vw, 4rem);
 }
 
-.hero::after {
-  content: "DO YOU REMEMBER THIS PLACE?";
-  position: absolute;
-  right: 1rem;
-  bottom: 0.6rem;
-  color: var(--accent);
-  font-family: var(--pixel);
-  font-size: 0.48rem;
-  letter-spacing: 0.16em;
-  opacity: 0.42;
-}
-
 .eyebrow, .preview-note, .offline-chip, #meta, .section-heading, footer {
   font-family: var(--pixel);
   text-transform: uppercase;
@@ -316,6 +312,13 @@ h1 {
   line-height: 1.65;
   letter-spacing: 0.005em;
   border-left: 6px solid var(--signal);
+}
+.matter-word {
+  color: #862bd0;
+  font-family: "Neo Castel", var(--ui);
+  font-weight: 400;
+  font-size: 1em;
+  line-height: inherit;
 }
 .preview-note { margin: 1rem 0 0; color: var(--ink-soft); font-size: 0.65rem; }
 
