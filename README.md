@@ -1,4 +1,4 @@
-# artmat-rag
+# MATTER
 
 **A question-answering system over four kinds of source that disagree with each other on purpose.**
 
