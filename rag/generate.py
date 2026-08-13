@@ -28,9 +28,10 @@ from dataclasses import dataclass, field
 
 import anthropic
 
+from rag.route import COMPLEX_MODEL
 from rag.search import Hit
 
-MODEL = os.environ.get("GENERATE_MODEL", "claude-sonnet-5")
+MODEL = COMPLEX_MODEL
 
 # 4000, and the reason is worth writing down because this project hit it twice.
 # Sonnet 5 emits thinking blocks, and `max_tokens` budgets thinking *and*
@@ -56,7 +57,14 @@ MAX_TOKENS = 4000
 THINKING_DISABLED = {"type": "disabled"}
 
 
-def thinking_config(enabled: bool) -> dict | anthropic.NotGiven:
+def thinking_config(
+    enabled: bool, model: str = MODEL
+) -> dict | anthropic.NotGiven:
+    # The cheap lookup model does not need extended-thinking configuration.
+    # Omitting the field also keeps routing compatible with models that do not
+    # expose Anthropic's thinking control at all.
+    if model != MODEL:
+        return anthropic.NOT_GIVEN
     return anthropic.NOT_GIVEN if enabled else THINKING_DISABLED
 
 # How the layers should be described to the model. Naming them by what they can
@@ -159,6 +167,7 @@ class Answer:
     # never be scored as if it were a finished one -- the judge would be
     # measuring the token budget and calling it answer quality.
     truncated: bool = False
+    model: str = MODEL
 
 
 def format_context(hits: list[Hit]) -> str:
@@ -195,6 +204,7 @@ def stream(
     variant: str = "arbitrated",
     client: anthropic.Anthropic | None = None,
     thinking: bool = False,
+    model: str | None = None,
 ):
     """Yield answer text as it arrives, then yield the finished `Answer` last.
 
@@ -212,14 +222,15 @@ def stream(
     if variant not in PROMPTS:
         raise ValueError(f"unknown variant {variant!r}; expected {list(PROMPTS)}")
     client = client or anthropic.Anthropic()
+    model = model or MODEL
     hits = [] if variant == "no_context" else hits
 
     parts: list[str] = []
     with client.messages.stream(
-        model=MODEL,
+        model=model,
         max_tokens=MAX_TOKENS,
         system=PROMPTS[variant],
-        thinking=thinking_config(thinking),
+        thinking=thinking_config(thinking, model),
         messages=[
             {"role": "user", "content": build_content(question, hits, variant)}
         ],
@@ -237,6 +248,7 @@ def stream(
         input_tokens=message.usage.input_tokens,
         output_tokens=message.usage.output_tokens,
         truncated=message.stop_reason == "max_tokens",
+        model=model,
     )
 
 
@@ -246,20 +258,22 @@ def generate(
     variant: str = "arbitrated",
     client: anthropic.Anthropic | None = None,
     thinking: bool = True,
+    model: str | None = None,
 ) -> Answer:
     if variant not in PROMPTS:
         raise ValueError(f"unknown variant {variant!r}; expected {list(PROMPTS)}")
     client = client or anthropic.Anthropic()
+    model = model or MODEL
 
     if variant == "no_context":
         hits = []
     content = build_content(question, hits, variant)
 
     message = client.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=MAX_TOKENS,
         system=PROMPTS[variant],
-        thinking=thinking_config(thinking),
+        thinking=thinking_config(thinking, model),
         messages=[{"role": "user", "content": content}],
     )
     text = "\n".join(b.text for b in message.content if b.type == "text")
@@ -271,6 +285,7 @@ def generate(
         input_tokens=message.usage.input_tokens,
         output_tokens=message.usage.output_tokens,
         truncated=message.stop_reason == "max_tokens",
+        model=model,
     )
 
 
