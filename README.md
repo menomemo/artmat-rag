@@ -43,7 +43,7 @@ evaluation condition running the same questions with no retrieval at all. See
 make setup            # venv + pinned dependencies
 cp .env.example .env  # add ANTHROPIC_API_KEY
 make up               # Qdrant + Postgres + Grafana
-make index            # embed 4,115 chunks (~7 min, CPU-only, no API key needed)
+make index            # sync only new/changed chunks (CPU-only, no API key)
 make ui               # http://localhost:8501
 ```
 
@@ -228,6 +228,37 @@ through fastembed, so re-indexing needs no API key.
 
 RRF is computed by Qdrant rather than in Python: the usual mistake is fusing
 *scores*, which cannot be compared across a cosine similarity and a BM25 sum.
+
+### Incremental indexing
+
+`make index` treats `data/chunks.jsonl` as the desired collection state. It
+reads only Qdrant payloads (never downloads the existing vectors), compares a
+canonical content hash, and embeds only chunks that are new or changed.
+Unchanged chunks incur no embedding work. Chunks no longer present in the file
+are removed, so deleting a source document also removes all of its old windows.
+
+Chunk identity comes from `chunk_id`, not its line number. New points use a
+deterministic UUID, so inserting one document near the start of the file cannot
+renumber and overwrite the rest of the collection. Existing numeric point IDs
+from the original index are adopted in place on the first incremental run; a
+payload-only signature migration makes future model changes detectable, but no
+vectors are recomputed and a forced rebuild is not required.
+
+The index signature covers both embedding models, vector names and payload
+schema. A signature change re-embeds affected points even when their text did
+not change. Writes finish before stale points are deleted, so an interrupted
+embedding batch leaves the old searchable corpus intact and can be retried.
+
+```bash
+python -m rag.index --dry-run              # counts only; writes nothing
+python -m rag.index --no-prune             # never delete absent points
+python -m rag.index --limit 20 --no-prune  # safe partial development run
+make index-rebuild                         # explicit destructive full rebuild
+```
+
+The command rejects duplicate or empty input, refuses `--limit` with pruning,
+and refuses the misleading `--drop --dry-run` combination. An intentionally
+empty corpus requires the explicit `--allow-empty` flag.
 
 ### Query rewriting
 
