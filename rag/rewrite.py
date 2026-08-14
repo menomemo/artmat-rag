@@ -36,7 +36,16 @@ from qdrant_client import QdrantClient, models
 import rag.env  # noqa: F401  -- loads .env on import
 
 from rag.index import COLLECTION, DENSE, SPARSE, dense_doc, sparse_doc
-from rag.search import CANDIDATES, Hit, _reranker, _source_filter
+from rag.search import (
+    CANDIDATES,
+    MMR_CANDIDATES,
+    MMR_RELEVANCE_HEAD,
+    Hit,
+    _reranker,
+    _source_filter,
+    candidates_from_points,
+    diversify,
+)
 
 # Rewriting is a per-query, user-facing call, so it runs on the cheapest model
 # that can do it. It is a vocabulary lookup with a little judgement, not
@@ -147,6 +156,7 @@ def search_rewritten(
     limit: int = 5,
     rerank: bool = True,
     source_types: list[str] | None = None,
+    diversify_results: bool = True,
 ) -> list[Hit]:
     """Hybrid retrieval over the original and the rewrite together.
 
@@ -161,6 +171,7 @@ def search_rewritten(
     too, but appended with the technical terms, since that is the arm that
     could not match anything before.
     """
+    diversity_active = diversify_results and limit > MMR_RELEVANCE_HEAD
     points = client.query_points(
         collection_name=COLLECTION,
         prefetch=[
@@ -175,10 +186,23 @@ def search_rewritten(
             ),
         ],
         query=models.FusionQuery(fusion=models.Fusion.RRF),
-        limit=CANDIDATES if rerank else limit,
+        limit=(
+            CANDIDATES
+            if rerank
+            else min(CANDIDATES, max(limit, MMR_CANDIDATES))
+        ),
         query_filter=_source_filter(source_types),
         with_payload=True,
+        with_vectors=[DENSE] if diversity_active and not rerank else False,
     ).points
+    points.sort(
+        key=lambda point: (
+            -point.score, (point.payload or {}).get("chunk_id", "")
+        )
+    )
+
+    if diversity_active and not rerank:
+        return diversify(candidates_from_points(points), limit)
 
     hits = [Hit.from_point(p) for p in points]
     if not rerank or not hits:

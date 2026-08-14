@@ -1,4 +1,4 @@
-"""Four retrievers over one collection, so they can be compared honestly.
+"""Retrievers over one collection, so they can be compared honestly.
 
 `dense`, `sparse`, and `hybrid` differ only in how candidates are scored -- same
 index, same chunks, same payloads. `hybrid_rerank` adds a cross-encoder pass on
@@ -21,8 +21,10 @@ tradeoff that makes reranking worth having.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
+from math import sqrt
 
 from qdrant_client import QdrantClient, models
 
@@ -43,7 +45,18 @@ RERANK_MODEL = os.environ.get("RERANK_MODEL", "Xenova/ms-marco-MiniLM-L-6-v2")
 # reranked query near a second on CPU, which the Streamlit UI has to live with.
 CANDIDATES = 50
 
-METHODS = ("dense", "sparse", "hybrid", "hybrid_rerank")
+# Production diversity settings. MMR operates only on the candidate set already
+# retrieved by hybrid search; it cannot introduce an irrelevant document that
+# retrieval did not find. Two chunks per document preserve useful spec/prose
+# pairs while preventing one long datasheet from occupying the whole context.
+MMR_CANDIDATES = int(os.environ.get("MMR_CANDIDATES", "32"))
+MMR_LAMBDA = float(os.environ.get("MMR_LAMBDA", "0.95"))
+MMR_MAX_PER_DOC = int(os.environ.get("MMR_MAX_PER_DOC", "2"))
+MMR_MAX_PER_FAMILY = int(os.environ.get("MMR_MAX_PER_FAMILY", "2"))
+MMR_RELEVANCE_HEAD = int(os.environ.get("MMR_RELEVANCE_HEAD", "5"))
+
+METHODS = ("dense", "sparse", "hybrid", "hybrid_mmr", "hybrid_rerank")
+PRODUCTION_METHOD = "hybrid_mmr"
 
 
 @dataclass
@@ -70,6 +83,112 @@ class Hit:
             url=payload.get("url"),
             score=point.score,
         )
+
+
+@dataclass
+class Candidate:
+    hit: Hit
+    vector: list[float]
+
+
+def _cosine(left: list[float], right: list[float]) -> float:
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = sqrt(sum(value * value for value in left))
+    right_norm = sqrt(sum(value * value for value in right))
+    if not left_norm or not right_norm:
+        return 0.0
+    return dot / (left_norm * right_norm)
+
+
+GRADE_WORDS = {
+    "fast", "slow", "medium", "std", "standard", "trial", "kit", "starter"
+}
+
+
+def family_key(hit: Hit) -> str:
+    """Conservative manufacturer series key; other sources stay per-document.
+
+    Smooth-On titles consistently put a numeric grade and speed after the
+    series ("Mold Star 15 SLOW", "Smooth-Sil 950"). Removing only those
+    suffixes groups genuine variants without pretending every product in the
+    broad `platinum-silicone` category is interchangeable.
+    """
+    if hit.source_type != "manufacturer_datasheet":
+        return hit.doc_id
+    words = re.findall(r"[a-z0-9]+", hit.title.casefold())
+    while len(words) > 1 and (
+        any(character.isdigit() for character in words[-1])
+        or words[-1] in GRADE_WORDS
+    ):
+        words.pop()
+    return " ".join(words) or hit.doc_id
+
+
+def diversify(candidates: list[Candidate], limit: int) -> list[Hit]:
+    """Select relevant but non-redundant candidates with deterministic MMR."""
+    if not candidates or limit <= 0:
+        return []
+
+    scores = [candidate.hit.score for candidate in candidates]
+    low, high = min(scores), max(scores)
+    relevance = [
+        (score - low) / (high - low) if high > low else 1.0
+        for score in scores
+    ]
+
+    # Preserve the evaluated relevance head exactly. Diversity is for widening
+    # an eight-passage context, not for moving a known-good top-five result out
+    # of reach. Family/document caps apply only to additional selections.
+    head = min(limit, MMR_RELEVANCE_HEAD, len(candidates))
+    selected: list[int] = list(range(head))
+    remaining = list(range(head, len(candidates)))
+    per_doc: dict[str, int] = {}
+    per_family: dict[str, int] = {}
+    for index in selected:
+        hit = candidates[index].hit
+        per_doc[hit.doc_id] = per_doc.get(hit.doc_id, 0) + 1
+        family = family_key(hit)
+        per_family[family] = per_family.get(family, 0) + 1
+
+    while remaining and len(selected) < limit:
+        best_index = None
+        best_value = float("-inf")
+        for index in remaining:
+            candidate = candidates[index]
+            if per_doc.get(candidate.hit.doc_id, 0) >= MMR_MAX_PER_DOC:
+                continue
+            family = family_key(candidate.hit)
+            if per_family.get(family, 0) >= MMR_MAX_PER_FAMILY:
+                continue
+            similarity = max(
+                (_cosine(candidate.vector, candidates[chosen].vector)
+                 for chosen in selected),
+                default=0.0,
+            )
+            value = MMR_LAMBDA * relevance[index] - (1 - MMR_LAMBDA) * max(
+                similarity, 0.0
+            )
+            if value > best_value:
+                best_value = value
+                best_index = index
+
+        if best_index is None:
+            break
+        selected.append(best_index)
+        remaining.remove(best_index)
+        doc_id = candidates[best_index].hit.doc_id
+        per_doc[doc_id] = per_doc.get(doc_id, 0) + 1
+        family = family_key(candidates[best_index].hit)
+        per_family[family] = per_family.get(family, 0) + 1
+
+    return [candidates[index].hit for index in selected]
+
+
+def candidates_from_points(points) -> list[Candidate]:
+    return [
+        Candidate(Hit.from_point(point), list((point.vector or {}).get(DENSE, [])))
+        for point in points
+    ]
 
 
 @lru_cache(maxsize=1)
@@ -100,7 +219,7 @@ def search(
     limit: int = 5,
     source_types: list[str] | None = None,
 ) -> list[Hit]:
-    """One entry point for all four methods, so callers cannot diverge."""
+    """One entry point for every method, so callers cannot diverge."""
     if method not in METHODS:
         raise ValueError(f"unknown method {method!r}; expected one of {METHODS}")
 
@@ -132,7 +251,13 @@ def search(
     # rerank variant asks for more candidates because the cross-encoder can
     # only promote what fusion already surfaced -- a document missed here is
     # missed for good, no matter how good the reranker is.
-    fetch = CANDIDATES if method == "hybrid_rerank" else limit
+    diversity_active = method == "hybrid_mmr" and limit > MMR_RELEVANCE_HEAD
+    if method == "hybrid_rerank":
+        fetch = CANDIDATES
+    elif method in ("hybrid", "hybrid_mmr"):
+        fetch = min(CANDIDATES, max(limit, MMR_CANDIDATES))
+    else:
+        fetch = limit
     points = client.query_points(
         collection_name=COLLECTION,
         prefetch=[
@@ -143,10 +268,19 @@ def search(
         limit=fetch,
         query_filter=query_filter,
         with_payload=True,
+        with_vectors=[DENSE] if diversity_active else False,
     ).points
+    points.sort(
+        key=lambda point: (
+            -point.score, (point.payload or {}).get("chunk_id", "")
+        )
+    )
+
+    if diversity_active:
+        return diversify(candidates_from_points(points), limit)
 
     hits = [Hit.from_point(p) for p in points]
-    if method == "hybrid":
+    if method in ("hybrid", "hybrid_mmr"):
         return hits[:limit]
 
     if not hits:
