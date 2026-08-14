@@ -45,6 +45,78 @@ CANDIDATES = 50
 
 METHODS = ("dense", "sparse", "hybrid", "hybrid_rerank")
 
+SOURCE_TYPES = (
+    "manufacturer_datasheet",
+    "materials_science",
+    "conservation_literature",
+    "collection_precedent",
+)
+CHUNK_TYPES = ("spec", "narrative", "abstract", "precedent")
+MANUFACTURER_CATEGORIES = (
+    "adhesives", "color-and-fillers", "concrete-gypsum-additives",
+    "epoxy-casting-and-laminating-resins", "epoxy-putties",
+    "epoxy-urethane-coatings", "platinum-silicone", "polysulfide-rubber",
+    "sealers-release-agents", "silicone-expanding-foam-platinum-cure",
+    "tin-silicone", "urethane-expanding-foams", "urethane-resin",
+    "urethane-rubber",
+)
+LITERATURE_DOMAINS = (
+    "adhesives_coatings", "cementitious", "conservation_practice", "metals",
+    "pigments_surfaces", "polymers_resins",
+)
+COLLECTION_MATERIALS = (
+    "aluminium", "bronze", "concrete / cement", "epoxy resin", "fibreglass",
+    "latex / rubber", "lead", "plaster", "polyester resin", "polystyrene",
+    "polyurethane", "silicone", "steel", "unspecified resin", "wax",
+)
+FILTER_YEAR_MIN = 1952
+FILTER_YEAR_MAX = 2026
+
+
+@dataclass(frozen=True)
+class SearchFilters:
+    source_types: tuple[str, ...] = ()
+    chunk_types: tuple[str, ...] = ()
+    categories: tuple[str, ...] = ()
+    domains: tuple[str, ...] = ()
+    materials: tuple[str, ...] = ()
+    year_from: int | None = None
+    year_to: int | None = None
+
+    def __post_init__(self) -> None:
+        checks = (
+            ("source type", self.source_types, SOURCE_TYPES),
+            ("chunk type", self.chunk_types, CHUNK_TYPES),
+            ("category", self.categories, MANUFACTURER_CATEGORIES),
+            ("domain", self.domains, LITERATURE_DOMAINS),
+            ("material", self.materials, COLLECTION_MATERIALS),
+        )
+        for label, values, allowed in checks:
+            unknown = set(values) - set(allowed)
+            if unknown:
+                raise ValueError(f"unknown {label}: {sorted(unknown)}")
+        if (
+            self.year_from is not None and self.year_to is not None
+            and self.year_from > self.year_to
+        ):
+            raise ValueError("year_from must be less than or equal to year_to")
+        for label, value in (("year_from", self.year_from), ("year_to", self.year_to)):
+            if value is not None and not FILTER_YEAR_MIN <= value <= FILTER_YEAR_MAX:
+                raise ValueError(
+                    f"{label} must be between {FILTER_YEAR_MIN} and {FILTER_YEAR_MAX}"
+                )
+
+    def as_dict(self) -> dict:
+        return {
+            "source_types": list(self.source_types),
+            "chunk_types": list(self.chunk_types),
+            "categories": list(self.categories),
+            "domains": list(self.domains),
+            "materials": list(self.materials),
+            "year_from": self.year_from,
+            "year_to": self.year_to,
+        }
+
 
 @dataclass
 class Hit:
@@ -81,16 +153,45 @@ def _reranker():
     return TextCrossEncoder(model_name=RERANK_MODEL)
 
 
-def _source_filter(source_types: list[str] | None) -> models.Filter | None:
-    if not source_types:
-        return None
-    return models.Filter(
-        must=[
-            models.FieldCondition(
-                key="source_type", match=models.MatchAny(any=source_types)
-            )
-        ]
+def _metadata_filter(
+    filters: SearchFilters | None = None,
+    source_types: list[str] | None = None,
+) -> models.Filter | None:
+    if filters is not None and source_types:
+        raise ValueError("pass filters or source_types, not both")
+    filters = filters or SearchFilters(
+        source_types=tuple(source_types or ())
     )
+    conditions: list[models.Condition] = []
+    keyword_fields = (
+        ("source_type", filters.source_types),
+        ("chunk_type", filters.chunk_types),
+        ("category", filters.categories),
+        ("domain", filters.domains),
+        ("material", filters.materials),
+    )
+    for field, values in keyword_fields:
+        if values:
+            conditions.append(
+                models.FieldCondition(
+                    key=field, match=models.MatchAny(any=list(values))
+                )
+            )
+    if filters.year_from is not None or filters.year_to is not None:
+        conditions.append(
+            models.FieldCondition(
+                key="year",
+                range=models.Range(gte=filters.year_from, lte=filters.year_to),
+            )
+        )
+    if not conditions:
+        return None
+    return models.Filter(must=conditions)
+
+
+# Compatibility name used by older callers and evaluations.
+def _source_filter(source_types: list[str] | None) -> models.Filter | None:
+    return _metadata_filter(source_types=source_types)
 
 
 def search(
@@ -99,12 +200,13 @@ def search(
     method: str = "hybrid_rerank",
     limit: int = 5,
     source_types: list[str] | None = None,
+    filters: SearchFilters | None = None,
 ) -> list[Hit]:
     """One entry point for all four methods, so callers cannot diverge."""
     if method not in METHODS:
         raise ValueError(f"unknown method {method!r}; expected one of {METHODS}")
 
-    query_filter = _source_filter(source_types)
+    query_filter = _metadata_filter(filters, source_types)
 
     if method == "dense":
         points = client.query_points(
