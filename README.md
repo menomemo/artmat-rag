@@ -39,6 +39,15 @@ evaluation condition running the same questions with no retrieval at all. See
 
 ## Quick start
 
+Choose **one** of the two environments below and run every command in that
+environment. The application itself runs in a Python virtual environment;
+Docker Compose runs Qdrant, Postgres, and Grafana.
+
+### Option A: local machine (recommended)
+
+Prerequisites: Python 3.11 or 3.12, GNU Make, and Docker with Compose v2. Start
+Docker Desktop (macOS/Windows) or the Docker daemon (Linux) before continuing.
+
 ```bash
 make setup            # venv + pinned dependencies
 cp .env.example .env  # add ANTHROPIC_API_KEY
@@ -47,12 +56,44 @@ make index            # embed 4,115 chunks (~7 min, CPU-only, no API key needed)
 make ui               # http://localhost:8501
 ```
 
+Run those commands in a normal host terminal, from the repository root. There
+is no need to install Python packages globally: `make setup` creates `.venv`
+and every later Make target uses it.
+
+### Option B: VS Code Dev Container / GitHub Codespaces
+
+Open the repository in the supplied Dev Container and wait for its setup to
+finish. It includes Python, Make, Docker, and Docker Compose; do **not** start a
+second copy of the stack from a host terminal. Then run the same workflow in
+the Dev Container terminal:
+
+```bash
+cp .env.example .env  # add ANTHROPIC_API_KEY
+make up
+make index
+make ui
+```
+
+The Dev Container creates `.venv` automatically. Its Docker daemon is isolated
+from the host, so `docker compose ps` must also be run in the Dev Container
+terminal when checking the services. Rebuild the Dev Container if it was
+created before the Docker-in-Docker configuration was added.
+
+### Verify the stack
+
+After `make up`, `docker compose ps` should show `qdrant`, `postgres`, and
+`grafana`. After `make ui`, open:
+
+- application: <http://localhost:8501>
+- Qdrant dashboard: <http://localhost:6333/dashboard>
+- Grafana: <http://localhost:3000> (anonymous read access; no login required)
+
+If `make index` reports that Qdrant is unavailable, first run
+`docker compose ps`; the usual cause is that Docker was not started or that
+`make up` was run in a different environment.
+
 `make all` rebuilds everything from scratch including scraping and both
 evaluations. `make help` lists every stage.
-
-Services: UI on `:8501`, Qdrant dashboard on `:6333/dashboard`, Grafana on
-`:3000` (anonymous viewing enabled, so no login is required to read the
-dashboard).
 
 ---
 
