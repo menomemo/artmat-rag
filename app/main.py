@@ -44,7 +44,17 @@ from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import LAYER_DESCRIPTIONS, MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
-from rag.search import search
+from rag.search import (
+    CHUNK_TYPES,
+    COLLECTION_MATERIALS,
+    FILTER_YEAR_MAX,
+    FILTER_YEAR_MIN,
+    LITERATURE_DOMAINS,
+    MANUFACTURER_CATEGORIES,
+    SOURCE_TYPES,
+    SearchFilters,
+    search,
+)
 
 st.set_page_config(page_title="artmat — materials for making", layout="wide")
 
@@ -107,15 +117,17 @@ def warm(qdrant) -> None:
     search(qdrant, "warm", method="hybrid", limit=1)
 
 
-def retrieve(question: str, k: int, use_rewrite: bool):
+def retrieve(question: str, k: int, use_rewrite: bool, filters: SearchFilters):
     qdrant, client, _ = bootstrap()
     started = time.perf_counter()
     if use_rewrite:
         rw = rewrite(question, client)
-        hits = search_rewritten(qdrant, rw, limit=k, rerank=False)
+        hits = search_rewritten(
+            qdrant, rw, limit=k, rerank=False, filters=filters
+        )
     else:
         rw = Rewrite(original=question, rewritten=question, used=False)
-        hits = search(qdrant, question, method="hybrid", limit=k)
+        hits = search(qdrant, question, method="hybrid", limit=k, filters=filters)
     return rw, hits, int((time.perf_counter() - started) * 1000)
 
 
@@ -128,6 +140,7 @@ def finish_query(
     answer,
     retrieval_ms: int,
     generate_ms: int,
+    filters: SearchFilters,
 ) -> dict:
     """Log a completed query. Split out from retrieval so the UI can stream the
     answer first and record it afterwards, without the log losing anything."""
@@ -156,6 +169,7 @@ def finish_query(
         ),
         "truncated": answer.truncated,
         "error": None,
+        "filters": filters.as_dict(),
     }
 
     # An answer the user can already read must not be thrown away because the
@@ -205,6 +219,57 @@ with st.sidebar:
         help="Translates studio language into document vocabulary "
         "('before it sets' → 'pot life'). Measured +0.03 hit@5 overall, "
         "+0.06 on manufacturer datasheets.",
+    )
+
+    with st.expander("Filter evidence"):
+        selected_sources = st.multiselect(
+            "Source layers",
+            SOURCE_TYPES,
+            format_func=lambda value: LAYER_LABEL.get(value, value),
+            help="Empty means all four layers.",
+        )
+        selected_chunks = st.multiselect(
+            "Passage types",
+            CHUNK_TYPES,
+            format_func=lambda value: value.replace("_", " ").title(),
+            help="Empty means all passage types.",
+        )
+        selected_categories = st.multiselect(
+            "Manufacturer categories",
+            MANUFACTURER_CATEGORIES,
+            format_func=lambda value: value.replace("-", " ").title(),
+        )
+        selected_domains = st.multiselect(
+            "Literature domains",
+            LITERATURE_DOMAINS,
+            format_func=lambda value: value.replace("_", " ").title(),
+        )
+        selected_materials = st.multiselect(
+            "Collection materials",
+            COLLECTION_MATERIALS,
+            format_func=str.title,
+        )
+        limit_year = st.toggle(
+            "Limit publication year",
+            help="Only literature carries publication years; enabling this "
+            "excludes datasheets and collection precedents.",
+        )
+        year_range = st.slider(
+            "Publication years",
+            FILTER_YEAR_MIN,
+            FILTER_YEAR_MAX,
+            (FILTER_YEAR_MIN, FILTER_YEAR_MAX),
+            disabled=not limit_year,
+        )
+
+    filters = SearchFilters(
+        source_types=tuple(selected_sources),
+        chunk_types=tuple(selected_chunks),
+        categories=tuple(selected_categories),
+        domains=tuple(selected_domains),
+        materials=tuple(selected_materials),
+        year_from=year_range[0] if limit_year else None,
+        year_to=year_range[1] if limit_year else None,
     )
 
     st.subheader("Source layers")
@@ -262,7 +327,9 @@ if st.button("Ask", type="primary") and question.strip():
     st.session_state.result = None
     try:
         with st.spinner("Searching…"):
-            rw, hits, retrieval_ms = retrieve(question.strip(), k, use_rewrite)
+            rw, hits, retrieval_ms = retrieve(
+                question.strip(), k, use_rewrite, filters
+            )
 
         # Shown before the answer streams, not after. The rewrite is the first
         # place a query goes wrong, and a user who sees it while waiting can
@@ -286,7 +353,7 @@ if st.button("Ask", type="primary") and question.strip():
 
         st.session_state.result = finish_query(
             question.strip(), variant, use_rewrite, rw,
-            hits, answer_holder["answer"], retrieval_ms, generate_ms,
+            hits, answer_holder["answer"], retrieval_ms, generate_ms, filters,
         )
         # Re-run so the page renders from session state alone. Without this the
         # streamed text is drawn by this branch, and every later interaction --

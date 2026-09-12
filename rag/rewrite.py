@@ -36,7 +36,7 @@ from qdrant_client import QdrantClient, models
 import rag.env  # noqa: F401  -- loads .env on import
 
 from rag.index import COLLECTION, DENSE, SPARSE, dense_doc, sparse_doc
-from rag.search import CANDIDATES, Hit, _reranker, _source_filter
+from rag.search import CANDIDATES, Hit, SearchFilters, _metadata_filter, _reranker
 
 # Rewriting is a per-query, user-facing call, so it runs on the cheapest model
 # that can do it. It is a vocabulary lookup with a little judgement, not
@@ -147,6 +147,7 @@ def search_rewritten(
     limit: int = 5,
     rerank: bool = True,
     source_types: list[str] | None = None,
+    filters: SearchFilters | None = None,
 ) -> list[Hit]:
     """Hybrid retrieval over the original and the rewrite together.
 
@@ -176,7 +177,7 @@ def search_rewritten(
         ],
         query=models.FusionQuery(fusion=models.Fusion.RRF),
         limit=CANDIDATES if rerank else limit,
-        query_filter=_source_filter(source_types),
+        query_filter=_metadata_filter(filters, source_types),
         with_payload=True,
     ).points
 

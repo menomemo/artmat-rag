@@ -41,7 +41,17 @@ from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
-from rag.search import search
+from rag.search import (
+    CHUNK_TYPES,
+    COLLECTION_MATERIALS,
+    FILTER_YEAR_MAX,
+    FILTER_YEAR_MIN,
+    LITERATURE_DOMAINS,
+    MANUFACTURER_CATEGORIES,
+    SOURCE_TYPES,
+    SearchFilters,
+    search,
+)
 
 # What kind of evidence each layer rests on. Categorical, and every value is
 # true by the definition of the layer rather than estimated.
@@ -107,11 +117,33 @@ def startup() -> None:
         _state["db_error"] = str(exc)
 
 
+class SearchFilterRequest(BaseModel):
+    source_types: list[str] = Field(default_factory=list, max_length=4)
+    chunk_types: list[str] = Field(default_factory=list, max_length=4)
+    categories: list[str] = Field(default_factory=list, max_length=14)
+    domains: list[str] = Field(default_factory=list, max_length=6)
+    materials: list[str] = Field(default_factory=list, max_length=15)
+    year_from: int | None = None
+    year_to: int | None = None
+
+    def to_search_filters(self) -> SearchFilters:
+        return SearchFilters(
+            source_types=tuple(self.source_types),
+            chunk_types=tuple(self.chunk_types),
+            categories=tuple(self.categories),
+            domains=tuple(self.domains),
+            materials=tuple(self.materials),
+            year_from=self.year_from,
+            year_to=self.year_to,
+        )
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
     variant: str = "arbitrated"
     k: int = Field(default=8, ge=1, le=16)
     rewrite: bool = True
+    filters: SearchFilterRequest = Field(default_factory=SearchFilterRequest)
 
 
 class FeedbackRequest(BaseModel):
@@ -149,10 +181,28 @@ def health() -> dict:
     }
 
 
+@app.get("/api/filters")
+def filter_options() -> dict:
+    """Values present in the indexed corpus, for any current or future UI."""
+    return {
+        "source_types": SOURCE_TYPES,
+        "chunk_types": CHUNK_TYPES,
+        "categories": MANUFACTURER_CATEGORIES,
+        "domains": LITERATURE_DOMAINS,
+        "materials": COLLECTION_MATERIALS,
+        "year": {"min": FILTER_YEAR_MIN, "max": FILTER_YEAR_MAX},
+        "semantics": "OR within a field; AND between fields",
+    }
+
+
 @app.post("/api/ask")
 async def ask(req: AskRequest):
     if req.variant not in PROMPTS:
         raise HTTPException(400, f"unknown variant {req.variant!r}")
+    try:
+        filters = req.filters.to_search_filters()
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
     qdrant = _state.get("qdrant")
     if qdrant is None:
@@ -166,12 +216,19 @@ async def ask(req: AskRequest):
         if req.rewrite:
             rw = await loop.run_in_executor(None, rewrite, question)
             hits = await loop.run_in_executor(
-                None, lambda: search_rewritten(qdrant, rw, limit=req.k, rerank=False)
+                None,
+                lambda: search_rewritten(
+                    qdrant, rw, limit=req.k, rerank=False, filters=filters
+                ),
             )
         else:
             rw = Rewrite(original=question, rewritten=question, used=False)
             hits = await loop.run_in_executor(
-                None, lambda: search(qdrant, question, method="hybrid", limit=req.k)
+                None,
+                lambda: search(
+                    qdrant, question, method="hybrid", limit=req.k,
+                    filters=filters,
+                ),
             )
         retrieval_ms = int((time.perf_counter() - started) * 1000)
 
@@ -247,6 +304,7 @@ async def ask(req: AskRequest):
                 "cost_usd": cost,
                 "truncated": answer.truncated,
                 "error": None,
+                "filters": filters.as_dict(),
             })
         except Exception:
             # Same rule as the Streamlit app: an answer the reader can already
