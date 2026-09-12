@@ -67,8 +67,15 @@ CREATE TABLE IF NOT EXISTS queries (
     -- cost on the day it ran does not.
     cost_usd        NUMERIC(10,6) NOT NULL DEFAULT 0,
     truncated       BOOLEAN      NOT NULL DEFAULT FALSE,
-    error           TEXT
+    error           TEXT,
+    generate_model  TEXT,
+    route_tier      TEXT,
+    route_reason    TEXT
 );
+
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS generate_model TEXT;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS route_tier TEXT;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS route_reason TEXT;
 
 CREATE INDEX IF NOT EXISTS queries_asked_at_idx ON queries (asked_at DESC);
 CREATE INDEX IF NOT EXISTS queries_variant_idx  ON queries (variant);
@@ -130,19 +137,24 @@ def log_query(record: dict, url: str | None = None) -> int:
                 question, rewritten, rewrite_used, variant, method, answer,
                 source_counts, chunk_ids, n_hits,
                 retrieval_ms, generate_ms, total_ms,
-                input_tokens, output_tokens, cost_usd, truncated, error
+                input_tokens, output_tokens, cost_usd, truncated, error,
+                generate_model, route_tier, route_reason
             ) VALUES (
                 %(question)s, %(rewritten)s, %(rewrite_used)s, %(variant)s,
                 %(method)s, %(answer)s, %(source_counts)s, %(chunk_ids)s,
                 %(n_hits)s, %(retrieval_ms)s, %(generate_ms)s, %(total_ms)s,
                 %(input_tokens)s, %(output_tokens)s, %(cost_usd)s,
-                %(truncated)s, %(error)s
+                %(truncated)s, %(error)s, %(generate_model)s, %(route_tier)s,
+                %(route_reason)s
             ) RETURNING id
             """,
             {
                 **record,
                 "source_counts": json.dumps(record.get("source_counts", {})),
                 "chunk_ids": json.dumps(record.get("chunk_ids", [])),
+                "generate_model": record.get("generate_model"),
+                "route_tier": record.get("route_tier"),
+                "route_reason": record.get("route_reason"),
             },
         ).fetchone()
         conn.commit()

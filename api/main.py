@@ -41,6 +41,7 @@ from app.db import estimate_cost, init_schema, log_feedback, log_query
 from rag.generate import MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
+from rag.route import COMPLEX_MODEL, SIMPLE_MODEL, route_question
 from rag.search import search
 
 # What kind of evidence each layer rests on. Categorical, and every value is
@@ -143,6 +144,7 @@ def health() -> dict:
     return {
         "ok": True,
         "model": MODEL,
+        "models": {"simple": SIMPLE_MODEL, "complex": COMPLEX_MODEL},
         "variants": [v for v in PROMPTS if v != "no_context"],
         "db": "down" if _state.get("db_error") else "up",
         "evidence_kinds": EVIDENCE_KIND,
@@ -174,6 +176,7 @@ async def ask(req: AskRequest):
                 None, lambda: search(qdrant, question, method="hybrid", limit=req.k)
             )
         retrieval_ms = int((time.perf_counter() - started) * 1000)
+        decision = route_question(question, hits, req.variant)
 
         # The rewrite goes out before a single answer token. It is where a wrong
         # answer usually starts, and a reader who sees "pot life" appear knows
@@ -184,6 +187,11 @@ async def ask(req: AskRequest):
             "used": rw.used, "terms": rw.terms, "retrieval_ms": retrieval_ms,
         })
         yield sse("hits", {"hits": [hit_json(h, i) for i, h in enumerate(hits)]})
+        yield sse("route", {
+            "tier": decision.tier,
+            "model": decision.model,
+            "reason": decision.reason,
+        })
 
         # `stream()` is a blocking generator, so it runs on a worker thread and
         # hands pieces back through a queue. Iterating it directly here would
@@ -194,7 +202,9 @@ async def ask(req: AskRequest):
 
         def pump():
             try:
-                for piece in stream(question, hits, req.variant):
+                for piece in stream(
+                    question, hits, req.variant, model=decision.model
+                ):
                     loop.call_soon_threadsafe(queue.put_nowait, piece)
             except Exception as exc:
                 loop.call_soon_threadsafe(queue.put_nowait, exc)
@@ -226,7 +236,7 @@ async def ask(req: AskRequest):
         for hit in hits:
             source_counts[hit.source_type] = source_counts.get(hit.source_type, 0) + 1
 
-        cost = estimate_cost(MODEL, answer.input_tokens, answer.output_tokens)
+        cost = estimate_cost(answer.model, answer.input_tokens, answer.output_tokens)
         query_id = None
         try:
             query_id = await loop.run_in_executor(None, log_query, {
@@ -247,6 +257,9 @@ async def ask(req: AskRequest):
                 "cost_usd": cost,
                 "truncated": answer.truncated,
                 "error": None,
+                "generate_model": answer.model,
+                "route_tier": decision.tier,
+                "route_reason": decision.reason,
             })
         except Exception:
             # Same rule as the Streamlit app: an answer the reader can already
@@ -264,6 +277,9 @@ async def ask(req: AskRequest):
             "cost_usd": round(cost, 6),
             "truncated": answer.truncated,
             "source_counts": source_counts,
+            "model": answer.model,
+            "route_tier": decision.tier,
+            "route_reason": decision.reason,
         })
 
     return StreamingResponse(
