@@ -100,6 +100,10 @@ class Rewrite:
     rewritten: str
     terms: list[str] = field(default_factory=list)
     used: bool = True
+    # Recorded so a cost comparison against the agentic path counts the Haiku
+    # call too. Small per query, but leaving it out would flatter the pipeline.
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     @property
     def keyword_query(self) -> str:
@@ -136,6 +140,8 @@ def rewrite(query: str, client: anthropic.Anthropic | None = None) -> Rewrite:
             original=query,
             rewritten=parsed.get("rewritten") or query,
             terms=[t for t in parsed.get("terms", []) if isinstance(t, str)],
+            input_tokens=message.usage.input_tokens,
+            output_tokens=message.usage.output_tokens,
         )
     except (anthropic.APIError, json.JSONDecodeError, KeyError):
         return Rewrite(original=query, rewritten=query, used=False)

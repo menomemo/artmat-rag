@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 # Streamlit puts the *script's* directory on sys.path, not the project root, so
@@ -41,6 +42,7 @@ import app.secrets  # noqa: F401  -- bridges st.secrets into os.environ
 import rag.env  # noqa: F401  -- loads .env on import
 
 from app.db import estimate_cost, init_schema, log_feedback, log_query
+from rag.agent import MAX_SEARCHES, stream_agent
 from rag.generate import LAYER_DESCRIPTIONS, MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
@@ -158,23 +160,70 @@ def finish_query(
         "error": None,
     }
 
-    # An answer the user can already read must not be thrown away because the
-    # log is unavailable. `query_id = None` disables the feedback buttons for
-    # this answer -- feedback keyed to a row that was never written would be
-    # worse than no feedback.
-    try:
-        query_id = log_query(record)
-    except Exception as exc:
-        query_id = None
-        st.warning(f"Answer not logged — monitoring is degraded ({exc}).")
-
     return {
-        "query_id": query_id,
+        "query_id": _log(record),
         "answer": answer,
         "hits": hits,
         "rewrite": rw,
         "retrieval_ms": retrieval_ms,
         "generate_ms": generate_ms,
+    }
+
+
+def _log(record: dict) -> int | None:
+    # An answer the user can already read must not be thrown away because the
+    # log is unavailable. `query_id = None` disables the feedback buttons for
+    # this answer -- feedback keyed to a row that was never written would be
+    # worse than no feedback.
+    try:
+        return log_query(record)
+    except Exception as exc:
+        st.warning(f"Answer not logged — monitoring is degraded ({exc}).")
+        return None
+
+
+def finish_agent_query(question: str, answer, total_ms: int) -> dict:
+    """Log an agentic answer in the same table as the pipeline's.
+
+    Retrieval time is the sum of the searches; everything else is model time,
+    including the turns spent deciding what to search. That split is what makes
+    the dashboard able to say where the extra latency of this mode goes.
+    """
+    retrieval_ms = sum(call.ms for call in answer.searches)
+    source_counts: dict[str, int] = {}
+    for hit in answer.hits:
+        source_counts[hit.source_type] = source_counts.get(hit.source_type, 0) + 1
+
+    record = {
+        "question": question,
+        "rewritten": " | ".join(call.query for call in answer.searches),
+        "rewrite_used": False,
+        "variant": "arbitrated",
+        "method": "agentic_tools",
+        "answer": answer.text,
+        "source_counts": source_counts,
+        "chunk_ids": [h.chunk_id for h in answer.hits],
+        "n_hits": len(answer.hits),
+        "retrieval_ms": retrieval_ms,
+        "generate_ms": total_ms - retrieval_ms,
+        "total_ms": total_ms,
+        "input_tokens": answer.input_tokens,
+        "output_tokens": answer.output_tokens,
+        "cost_usd": estimate_cost(MODEL, answer.input_tokens, answer.output_tokens),
+        "truncated": answer.truncated,
+        "error": None,
+        "n_searches": len(answer.searches),
+        "search_calls": [asdict(call) for call in answer.searches],
+        "n_turns": answer.turns,
+    }
+    return {
+        "query_id": _log(record),
+        "answer": answer,
+        "hits": answer.hits,
+        "rewrite": Rewrite(original=question, rewritten=question, used=False),
+        "searches": answer.searches,
+        "retrieval_ms": retrieval_ms,
+        "generate_ms": total_ms - retrieval_ms,
     }
 
 
@@ -198,10 +247,19 @@ with st.sidebar:
         help="`arbitrated` surfaces source disagreement; `plain` is a standard "
         "RAG prompt, kept so the difference is visible.",
     )
-    k = st.slider("Passages retrieved", 4, 16, 8)
+    agentic = st.toggle(
+        "Agentic search (experimental)",
+        value=False,
+        help=f"The model searches for itself, up to {MAX_SEARCHES} times, and "
+        "can target one source layer at a time. Slower and costs more per "
+        "question; uses the arbitrated answer style. See eval/agentic.py for "
+        "how it compares.",
+    )
+    k = st.slider("Passages retrieved", 4, 16, 8, disabled=agentic)
     use_rewrite = st.toggle(
         "Query rewriting",
         value=True,
+        disabled=agentic,
         help="Translates studio language into document vocabulary "
         "('before it sets' → 'pot life'). Measured +0.03 hit@5 overall, "
         "+0.06 on manufacturer datasheets.",
@@ -258,7 +316,38 @@ question = st.text_area(
     height=88,
 )
 
-if st.button("Ask", type="primary") and question.strip():
+asked = st.button("Ask", type="primary") and bool(question.strip())
+
+if asked and agentic:
+    st.session_state.result = None
+    try:
+        qdrant, client, _ = bootstrap()
+        started = time.perf_counter()
+        status = st.status("Searching…", expanded=True)
+        holder = st.empty()
+        shown, done = "", None
+        for kind, payload in stream_agent(question.strip(), qdrant, client):
+            if kind == "text":
+                shown += payload
+                holder.markdown(shown)
+            elif kind == "reset":
+                # Text before a tool call is the model thinking aloud, not the
+                # answer; clearing it keeps the reader from starting on it.
+                shown = ""
+                holder.empty()
+            elif kind == "search":
+                layers = ", ".join(payload.source_types) if payload.source_types else "all layers"
+                status.write(f"🔎 *{payload.query}* — {layers} · {payload.new} new passages")
+            else:
+                done = payload
+        status.update(label=f"{len(done.searches)} searches", state="complete", expanded=False)
+        total_ms = int((time.perf_counter() - started) * 1000)
+        st.session_state.result = finish_agent_query(question.strip(), done, total_ms)
+        st.rerun()
+    except Exception as exc:  # surfaced, not swallowed
+        st.session_state.result = None
+        st.error(f"Query failed: {exc}")
+elif asked:
     st.session_state.result = None
     try:
         with st.spinner("Searching…"):
@@ -307,6 +396,16 @@ if result:
         st.warning("This answer hit the token limit and may be cut off.")
 
     st.markdown(answer.text)
+
+    searches = result.get("searches")
+    if searches:
+        # The agent's queries are its rewrite: where a wrong answer would start,
+        # shown for the same reason "Searched as" is shown for the pipeline.
+        with st.expander(f"Searches the model chose ({len(searches)})"):
+            for i, call in enumerate(searches, 1):
+                layers = ", ".join(call.source_types) if call.source_types else "all layers"
+                note = f" — error: {call.error}" if call.error else f" — {call.new} new of {call.returned}"
+                st.markdown(f"{i}. *{call.query}* · {layers}{note}")
 
     st.caption(
         f"{result['retrieval_ms']} ms retrieval · {result['generate_ms']} ms "

@@ -1,0 +1,1000 @@
+{
+ "config": {
+  "generator": "claude-sonnet-5",
+  "judge": "claude-opus-5",
+  "agent_max_searches": 4,
+  "agent_per_search": 6,
+  "pipeline_k": 8,
+  "thinking": false
+ },
+ "summary": {
+  "ground_truth": {
+   "pipeline": {
+    "n": 25,
+    "n_judged": 24,
+    "target_hit_rate": 0.56,
+    "passages": 8,
+    "layers": 1.36,
+    "searches": 0,
+    "searches_using_layer_filter": 0,
+    "budget_exhausted": 0,
+    "grounded": 4.333,
+    "source_discrimination": 4.625,
+    "handles_conflict": 3.917,
+    "usable": 3.958,
+    "unsupported_claims": 1.167,
+    "cited_per_answer": 1.48,
+    "fabricated_citations": 0,
+    "stale_citations": 0,
+    "cost_usd": 0.029,
+    "latency_s_median": 14.5,
+    "input_tokens": 4505.64,
+    "output_tokens": 1209,
+    "truncated": 0,
+    "errors": 0
+   },
+   "agentic": {
+    "n": 25,
+    "n_judged": 25,
+    "target_hit_rate": 0.68,
+    "passages": 17.12,
+    "layers": 2.12,
+    "searches": 3.12,
+    "searches_using_layer_filter": 2,
+    "budget_exhausted": 0,
+    "grounded": 4.56,
+    "source_discrimination": 4.4,
+    "handles_conflict": 4.04,
+    "usable": 3.48,
+    "unsupported_claims": 0.48,
+    "cited_per_answer": 0,
+    "fabricated_citations": 0,
+    "stale_citations": 0,
+    "cost_usd": 0.063,
+    "latency_s_median": 13.0,
+    "input_tokens": 15430,
+    "output_tokens": 1144.64,
+    "truncated": 0,
+    "errors": 0
+   },
+   "paired_judge_wins": {
+    "tie": 4,
+    "agentic": 10,
+    "pipeline": 10
+   }
+  },
+  "examples": {
+   "pipeline": {
+    "n": 5,
+    "n_judged": 5,
+    "target_hit_rate": null,
+    "passages": 8,
+    "layers": 1.6,
+    "searches": 0,
+    "searches_using_layer_filter": 0,
+    "budget_exhausted": 0,
+    "grounded": 4.4,
+    "source_discrimination": 4.8,
+    "handles_conflict": 3.8,
+    "usable": 3.4,
+    "unsupported_claims": 1.2,
+    "cited_per_answer": 1.4,
+    "fabricated_citations": 0,
+    "stale_citations": 0,
+    "cost_usd": 0.036,
+    "latency_s_median": 19.3,
+    "input_tokens": 4916.6,
+    "output_tokens": 1514.2,
+    "truncated": 0,
+    "errors": 0
+   },
+   "agentic": {
+    "n": 5,
+    "n_judged": 4,
+    "target_hit_rate": null,
+    "passages": 19,
+    "layers": 1.8,
+    "searches": 3.6,
+    "searches_using_layer_filter": 0,
+    "budget_exhausted": 0,
+    "grounded": 4,
+    "source_discrimination": 3.75,
+    "handles_conflict": 3,
+    "usable": 3.25,
+    "unsupported_claims": 1.75,
+    "cited_per_answer": 0,
+    "fabricated_citations": 0,
+    "stale_citations": 0,
+    "cost_usd": 0.076,
+    "latency_s_median": 19.0,
+    "input_tokens": 19222,
+    "output_tokens": 1243.8,
+    "truncated": 0,
+    "errors": 0
+   },
+   "paired_judge_wins": {
+    "pipeline": 2,
+    "agentic": 1,
+    "tie": 1
+   }
+  }
+ },
+ "per_question": [
+  {
+   "set": "ground_truth",
+   "question": "If a dark passage in an old painting has gone hazy and pale because tiny cracks are scattering light through the paint film, what approach has been tried to get the true color to show again after cleaning, and does it hold up over time?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 11,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 5
+   },
+   "agentic_queries": [
+    "haze in dark passages of paintings due to microcracks scattering light",
+    "resaturation of blanched or cracked paint film varnish treatment"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "If stainless steel parts pick up salt residue and sit in humid, warm air, how does the size or amount of that salt patch affect whether and how fast cracks start, and does sheltering the metal from rain make pitting better or worse?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 21,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": null,
+    "source_discrimination": null,
+    "handles_conflict": null,
+    "usable": null
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "salt deposit size effect on stress corrosion cracking initiation stainless steel",
+    "sheltered outdoor exposure pitting corrosion stainless steel rain washing chlorides",
+    "stainless steel conservation sculpture outdoor chloride staining museum collection",
+    "manufacturer datasheet stainless steel marine grade corrosion resistance recommendations cleaning"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "Is there an additive I can mix into an epoxy that would help stop it from yellowing and breaking down when it's used outdoors and exposed to sunlight?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 18,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 2,
+    "source_discrimination": 4,
+    "handles_conflict": 1,
+    "usable": 2
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "UV stabilizer additive epoxy yellowing",
+    "HALS hindered amine light stabilizer epoxy outdoor",
+    "epoxy UV stabilizer manufacturer datasheet outdoor weathering",
+    "conservation epoxy adhesive aged outdoors sculpture decades yellowed"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I'm working with a cement-based composite material for casting and need to know how much working time I'll have before it sets and how strong the final piece will be once cured, including how well it holds up to freeze-thaw cycles outdoors.",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 24,
+   "agentic_n_layers": 3,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 4,
+    "source_discrimination": 3,
+    "handles_conflict": 3,
+    "usable": 1
+   },
+   "agentic_queries": [
+    "cement composite pot life working time setting",
+    "cement composite compressive strength cured",
+    "cement casting material for sculpture datasheet working time cure",
+    "freeze-thaw durability outdoor cement sculpture weathering"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I need a rigid, amber-clear cast resin with a short working window before it sets—what are its hardness, strength, and shrinkage properties once cured?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 10,
+   "agentic_n_layers": 1,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "rigid clear cast resin short pot life hardness shrinkage",
+    "cast polyurethane resin Shore hardness tensile strength cure shrinkage"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "When cleaning a heavily corroded outdoor bronze sculpture, how can you check on-site, in stages, whether you're actually removing the grime and old protective coating without damaging the original metal underneath?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 21,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 3,
+    "source_discrimination": 4,
+    "handles_conflict": 2,
+    "usable": 2
+   },
+   "agentic_judge": {
+    "grounded": 3,
+    "source_discrimination": 2,
+    "handles_conflict": 2,
+    "usable": 1
+   },
+   "agentic_queries": [
+    "cleaning outdoor bronze sculpture testing stages patina",
+    "removing wax coating bronze conservation on-site evaluation",
+    "test cleaning small area before full treatment sculpture conservation",
+    "portable XRF surface monitoring metal loss during cleaning treatment"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I'm making a hollow cast resin piece that might sit in a hot space—how can I lighten and reinforce the inside so it holds up to heat without adding much weight?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 22,
+   "agentic_n_layers": 3,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "lightweight filler hollow cast resin reinforcement heat",
+    "heat distortion temperature cast resin",
+    "rigid foam backfill hollow casting Foam-iT",
+    "conservation study resin cast artwork heat failure cracking"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "Is there evidence that a varnish or oil coating only starts glowing under UV once it has begun to degrade and yellow, rather than from the moment it's applied?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 11,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 4,
+    "source_discrimination": 4,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "UV fluorescence development varnish aging degradation",
+    "oil coating yellowing fluorescence correlation"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "If I'm choosing steel, galvanized steel, or stainless for an outdoor sculpture near the coast versus in a city, how much worse should I expect the corrosion to be by the sea, and does stainless actually hold up better?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 22,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 3,
+    "source_discrimination": 2,
+    "handles_conflict": 2,
+    "usable": 1
+   },
+   "agentic_queries": [
+    "corrosion rate steel galvanized stainless coastal marine atmosphere",
+    "outdoor sculpture steel corrosion conservation case study",
+    "hot-dip galvanizing coastal atmosphere service life manufacturer specification",
+    "stainless steel pitting corrosion chloride failure outdoor structure"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "When mixing up a batch of platinum silicone, what should I keep in mind about glove material and storage temperature so the rubber actually cures properly?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 12,
+   "agentic_n_layers": 1,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_queries": [
+    "platinum silicone cure inhibition glove contamination",
+    "platinum silicone storage temperature pot life shelf life"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "If I'm pouring a soft skin-like gel piece against this mold rubber, or later casting a platinum-cure silicone into it, are there compatibility problems with the release agent or the gel itself that could ruin the piece?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 12,
+   "agentic_n_layers": 1,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 2,
+    "source_discrimination": 4,
+    "handles_conflict": 2,
+    "usable": 2
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 4,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_queries": [
+    "platinum-cure silicone inhibition condensation cure contamination",
+    "release agent compatibility mold rubber skin-like gel"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "If I'm tinting a liquid urethane casting resin, how much colorant can I add before it messes with how the material sets up?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 12,
+   "agentic_n_layers": 3,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 4,
+    "handles_conflict": 5,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "colorant loading limit urethane casting resin cure",
+    "pigment percentage affecting cure polyurethane resin"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "Is there historical evidence that glass-reinforced composite works have been acquired and kept by major museums over many decades, suggesting the material has staying power for gallery-grade sculpture?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 22,
+   "agentic_n_layers": 4,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 2,
+    "source_discrimination": 3,
+    "handles_conflict": 2,
+    "usable": 2
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "glass-reinforced composite sculpture acquisition museum collection",
+    "fiberglass polyester resin sculpture degradation long-term",
+    "national collection holds fiberglass sculpture 1960s 1970s",
+    "polyester resin sculpture yellowing cracking decades conservation"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I need to glue metal parts together or fill a dent in a metal surface with something that won't sag when applied vertically and can later be sanded or drilled smooth after curing overnight -- what adhesive would work?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 12,
+   "agentic_n_layers": 3,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 3
+   },
+   "agentic_queries": [
+    "epoxy putty metal filler sandable drillable",
+    "thixotropic non-sag adhesive vertical application"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I need a slow-curing silicone rubber for mould making with a long working window before it sets—what are the handling properties I should expect?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 23,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "pot life working time silicone mould rubber",
+    "slow cure silicone rubber handling properties demould time",
+    "silicone rubber mould degradation shrinkage over time conservation",
+    "platinum cure silicone inhibition cure problems"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "If I'm assessing how salt spray and ambient temperature/humidity affect stress cracking risk in stainless steel components over time, what does the research say about how these environmental conditions change the onset and speed of cracking?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 22,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 4,
+    "source_discrimination": 4,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "chloride-induced stress corrosion cracking stainless steel",
+    "relative humidity temperature effect on stress corrosion cracking onset",
+    "stainless steel outdoor sculpture corrosion long-term performance",
+    "stainless steel datasheet corrosion resistance chloride environments"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "How long should I wait before handling a thick poured resin casting, and does pouring a thinner layer speed up curing?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 10,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "cure time thick poured resin casting demold time",
+    "exothermic reaction thickness cure rate resin"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I need a durable blue rubber for making a reusable mold—how much working time do I have before it sets, and what hardness and stretch can I expect from the cured piece?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 22,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 3,
+    "handles_conflict": 3,
+    "usable": 1
+   },
+   "agentic_queries": [
+    "pot life working time mold rubber",
+    "Shore A hardness elongation at break silicone rubber mold",
+    "blue rubber mold making polyurethane tin silicone color",
+    "silicone mold rubber degradation shrinkage over time reuse"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "If I sand or weather a car coating with self-cleaning or UV-protective additives, am I mostly releasing whole coating fragments rather than free nanoparticles, and does that make it safer to breathe or handle?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 20,
+   "agentic_n_layers": 1,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 4,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "nanoparticle release from automotive coating sanding weathering",
+    "self-cleaning UV-protective coating nanomaterial exposure risk",
+    "TiO2 nanoparticle release sanding exposure toxicology matrix-bound",
+    "photocatalytic nanoparticle coating manufacturer datasheet safety handling"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I need a fast-curing plastic casting resin that ends up semi-flexible with some give rather than rigid—how quickly does it set and how hard does it end up?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 11,
+   "agentic_n_layers": 1,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "fast-curing semi-flexible casting resin Shore hardness",
+    "polyurethane casting resin pot life demold time Shore A"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "For a wood carving where the sculpted eyes have lost their painted color, what approach lets you restore the look of the iris and pupil by making a thin, clear insert to lay over the eyeball surface instead of repainting it directly, and which casting material worked best when tinted for that purpose?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 3,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 11,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "clear insert over eyeball wood carving restoration iris pupil",
+    "tinted casting resin eye restoration sculpture"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I'm tinting a two-part rubber casting mix with a color additive for the first time—how much should I add relative to the total batch weight to get a solid opaque color without risking the material not setting up properly?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 12,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 4,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "pigment addition limit two-part rubber mold mix cure inhibition",
+    "colorant percentage by weight silicone addition cure inhibition"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "When formulating a UV-exposed protective epoxy coating, what curing agent ratio minimizes water absorption and porosity so the coating resists breaking down over long-term outdoor exposure?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 23,
+   "agentic_n_layers": 3,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "curing agent ratio epoxy water absorption porosity",
+    "epoxy coating outdoor UV degradation long-term exposure",
+    "epoxy coating yellowing chalking failure after years outdoor",
+    "amine hardener epoxy mix ratio datasheet recommendation"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "Is there a quick-curing casting resin I can mix with metal powder to get a convincing bronze-like finish without actual metal casting?",
+   "pipeline_target_hit": false,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": false,
+   "agentic_n_passages": 20,
+   "agentic_n_layers": 3,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "cold cast bronze resin metal powder finish",
+    "quick-curing casting resin pot life metal powder filled",
+    "cold cast bronze aging patina tarnish conservation",
+    "metal-filled polymer composite oxidation degradation studies"
+   ]
+  },
+  {
+   "set": "ground_truth",
+   "question": "I need a firm, tear-resistant silicone mould that can handle high heat exposure and still demould cleanly after casting -- what are the working properties like hardness, tear strength, and top temperature limit for this type of rubber?",
+   "pipeline_target_hit": true,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": true,
+   "agentic_n_passages": 24,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 3,
+    "source_discrimination": 2,
+    "handles_conflict": 2,
+    "usable": 1
+   },
+   "agentic_queries": [
+    "tear strength Shore A hardness silicone mould rubber",
+    "silicone rubber maximum service temperature high heat casting",
+    "high temperature resistant tin silicone mold rubber foundry wax casting durometer tensile",
+    "silicone rubber thermal degradation ageing long term stability"
+   ]
+  },
+  {
+   "set": "examples",
+   "question": "will my cast resin sculpture go yellow if I put it outdoors",
+   "pipeline_target_hit": null,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 3,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": null,
+   "agentic_n_passages": 21,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 5,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 2,
+    "source_discrimination": 2,
+    "handles_conflict": 1,
+    "usable": 1
+   },
+   "agentic_queries": [
+    "yellowing outdoor weathering cast resin",
+    "UV resistance polyurethane resin accelerated weathering datasheet",
+    "clear casting resin sculpture outdoor display conservation",
+    "polyester resin sculpture UV stabilizer datasheet outdoor use"
+   ]
+  },
+  {
+   "set": "examples",
+   "question": "how long can I work with the silicone before it starts to set",
+   "pipeline_target_hit": null,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": null,
+   "agentic_n_passages": 12,
+   "agentic_n_layers": 1,
+   "agentic_n_searches": 2,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 3
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 4,
+    "handles_conflict": 4,
+    "usable": 5
+   },
+   "agentic_queries": [
+    "pot life silicone",
+    "working time before cure silicone rubber"
+   ]
+  },
+  {
+   "set": "examples",
+   "question": "can I cast concrete thin enough for a wall panel that won't crack",
+   "pipeline_target_hit": null,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": null,
+   "agentic_n_passages": 23,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_judge": {
+    "grounded": 5,
+    "source_discrimination": 5,
+    "handles_conflict": 4,
+    "usable": 4
+   },
+   "agentic_queries": [
+    "thin concrete casting wall panel cracking",
+    "glass fiber reinforced concrete GFRC thin panel",
+    "concrete sculpture casting artist workshop shrinkage cracking",
+    "concrete artwork conservation condition report cracking deterioration"
+   ]
+  },
+  {
+   "set": "examples",
+   "question": "cast aluminium or stainless steel for a piece by the sea",
+   "pipeline_target_hit": null,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 1,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": null,
+   "agentic_n_passages": 21,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 3,
+    "source_discrimination": 4,
+    "handles_conflict": 3,
+    "usable": 3
+   },
+   "agentic_judge": {
+    "grounded": null,
+    "source_discrimination": null,
+    "handles_conflict": null,
+    "usable": null
+   },
+   "agentic_queries": [
+    "cast aluminium outdoor sculpture seaside corrosion",
+    "stainless steel marine atmosphere chloride pitting corrosion",
+    "bronze or stainless steel sculpture collection choice material",
+    "anodised aluminium sculpture datasheet weathering grade alloy"
+   ]
+  },
+  {
+   "set": "examples",
+   "question": "why do conservators avoid certain adhesives on artworks",
+   "pipeline_target_hit": null,
+   "pipeline_n_passages": 8,
+   "pipeline_n_layers": 2,
+   "pipeline_n_searches": 0,
+   "agentic_target_hit": null,
+   "agentic_n_passages": 18,
+   "agentic_n_layers": 2,
+   "agentic_n_searches": 4,
+   "pipeline_judge": {
+    "grounded": 4,
+    "source_discrimination": 5,
+    "handles_conflict": 3,
+    "usable": 3
+   },
+   "agentic_judge": {
+    "grounded": 4,
+    "source_discrimination": 4,
+    "handles_conflict": 3,
+    "usable": 3
+   },
+   "agentic_queries": [
+    "conservators avoid adhesive artwork failure",
+    "yellowing embrittlement adhesive aging conservation treatment",
+    "cyanoacrylate brittleness conservation reversibility concerns",
+    "adhesive datasheet long term performance claims bonding strength"
+   ]
+  }
+ ]
+}

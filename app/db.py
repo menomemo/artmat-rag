@@ -70,6 +70,14 @@ CREATE TABLE IF NOT EXISTS queries (
     error           TEXT
 );
 
+-- Agentic mode. Added as columns rather than a new table so every existing
+-- dashboard query keeps working; ADD COLUMN IF NOT EXISTS so a database
+-- created before this mode existed migrates on the next start. For the
+-- pipeline these stay 0 and [] -- which is itself the comparison.
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS n_searches   INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS search_calls JSONB   NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE queries ADD COLUMN IF NOT EXISTS n_turns      INTEGER NOT NULL DEFAULT 1;
+
 CREATE INDEX IF NOT EXISTS queries_asked_at_idx ON queries (asked_at DESC);
 CREATE INDEX IF NOT EXISTS queries_variant_idx  ON queries (variant);
 
@@ -130,19 +138,24 @@ def log_query(record: dict, url: str | None = None) -> int:
                 question, rewritten, rewrite_used, variant, method, answer,
                 source_counts, chunk_ids, n_hits,
                 retrieval_ms, generate_ms, total_ms,
-                input_tokens, output_tokens, cost_usd, truncated, error
+                input_tokens, output_tokens, cost_usd, truncated, error,
+                n_searches, search_calls, n_turns
             ) VALUES (
                 %(question)s, %(rewritten)s, %(rewrite_used)s, %(variant)s,
                 %(method)s, %(answer)s, %(source_counts)s, %(chunk_ids)s,
                 %(n_hits)s, %(retrieval_ms)s, %(generate_ms)s, %(total_ms)s,
                 %(input_tokens)s, %(output_tokens)s, %(cost_usd)s,
-                %(truncated)s, %(error)s
+                %(truncated)s, %(error)s,
+                %(n_searches)s, %(search_calls)s, %(n_turns)s
             ) RETURNING id
             """,
             {
                 **record,
                 "source_counts": json.dumps(record.get("source_counts", {})),
                 "chunk_ids": json.dumps(record.get("chunk_ids", [])),
+                "n_searches": record.get("n_searches", 0),
+                "search_calls": json.dumps(record.get("search_calls", [])),
+                "n_turns": record.get("n_turns", 1),
             },
         ).fetchone()
         conn.commit()

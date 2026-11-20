@@ -284,6 +284,88 @@ vocabulary, appending synonyms dilutes the exact match that was already winning.
 The rewrite is fused with the original query rather than replacing it, so the
 damage is bounded; it is not free.
 
+## Agentic retrieval: tool calling vs the fixed pipeline (2026-11-19)
+
+`rag/agent.py` gives the generator a `search_passages(query, source_types)`
+tool (same hybrid retriever, 6 passages per call, at most 4 calls) instead of
+one rewrite + top-8. Hypothesis: letting the model search each source layer
+deliberately would surface the disagreements the arbitrated prompt is built to
+report. `eval/agentic.py`, 25 ground-truth + 5 cross-layer questions, both arms
+ship-configured (arbitrated, thinking off), blind Opus judge against the union
+of both arms' passages. Raw numbers in `data/agentic_eval_v1.json`.
+
+Ground-truth questions (pipeline → agentic):
+
+| | pipeline | agentic |
+|---|---|---|
+| target chunk retrieved | 0.56 | **0.68** |
+| … within the first 8 passages | 0.56 | 0.52 |
+| passages shown | 8 | 17.1 |
+| layers represented | 1.36 | 2.12 |
+| grounded (1–5) | 4.33 | **4.56** |
+| unsupported claims / answer | 1.17 | **0.48** |
+| source discrimination | **4.63** | 4.40 |
+| handles conflict | 3.92 | 4.04 |
+| usable | **3.96** | 3.48 |
+| inline chunk-id citations / answer | **1.48** | 0 |
+| cost / question | **$0.029** | $0.063 |
+| median latency | 14.5 s | 13.0 s |
+| paired judge wins | 10 | 10 (4 ties) |
+
+On the 5 cross-layer examples — the questions the agent exists for — it lost
+on every judged dimension (n = 4–5, too small to rank, large enough to rule out
+a clear win).
+
+What the numbers say:
+
+- **The extra recall is bought with passages, not judgement.** Capped at the
+  same 8 passages the agent finds the target *less* often (0.52 vs 0.56); its
+  advantage is 17 passages instead of 8. A pipeline at k=16 is the fair next
+  comparison and costs no extra model calls.
+- **The model did not use the feature the design rests on.** 2 of 120 searches
+  set `source_types`. It searched in parallel pairs (every question took 2 or
+  4 searches; the budget never bound) with broad queries, so layer coverage
+  rose only because more passages were fetched.
+- **Fewer unsupported claims, less usable.** Answers stuck closer to the
+  evidence and hedged more; the judge scored them harder to act on.
+- **Citations disappeared.** 0 of 30 agentic answers cited a chunk id, against
+  1.5 per pipeline answer. Same passage format, so most likely the prompt
+  change ("do not describe your searches") — a traceability regression the
+  aggregate scores do not show.
+- **2.2× the cost, no latency penalty.** Every round re-sends the conversation
+  (15.4k input tokens vs 4.5k); parallel searches and shorter answers cancel the
+  extra turns.
+
+Decision: the pipeline stays the default; agentic search ships as an
+experimental toggle so the comparison stays reproducible. Before it could earn
+the default: restore inline citations, make per-layer searching the explicit
+first step (or one tool per layer), compare against pipeline k=16, and write a
+larger cross-layer question set — five questions cannot carry a conclusion.
+
+Caveat: pipeline scores here (grounded 4.33) are below `eval/judge.py`'s 4.84
+for the same prompt. Different conditions — thinking off, and a larger
+reference set to be checked against — not a regression; compare within a table,
+not across them.
+
+Per question in the v1 run (30 questions, full answer, not first token; local
+Qdrant, 4 concurrent workers):
+
+| | pipeline | agentic v1 |
+|---|---|---|
+| model calls | 1 (+ Haiku rewrite) | 2.6 (1.6 tool rounds, 3.2 searches) |
+| tokens in + out | 4,574 + 1,260 | 16,062 + 1,161 |
+| latency median / p90 | 15.9 s / 21.4 s | 13.9 s / 21.8 s |
+
+**Code is now v2, not yet evaluated.** `rag/agent.py` (`AGENT_VERSION =
+"v2-per-layer"`) replaces the optional filter with `search_layer(layer,
+query)` — every search names one layer — asks for per-layer searches in
+parallel in the first turn, requires bracketed chunk-id citations, and uses
+6 searches × 4 passages so a four-layer sweep is 16 passages. `eval/agentic.py`
+now also records a pipeline k=16 retrieval control, can reuse the v1 pipeline
+answers (`--reuse-pipeline data/agentic_runs_v1.json`), and can skip the Opus
+batch (`--no-judge`, ~$2 instead of ~$9). The v1 numbers above describe the v1
+tool, not the code as it stands.
+
 ## Remaining plan
 
 - [x] Finish OpenAlex collection + LLM relevance gate
@@ -299,6 +381,14 @@ damage is bounded; it is not free.
 - [x] Cloud deploy — live at artmat-rag-ngpg5rtoak6ppesfbrhe68.streamlit.app
       Verified end to end from the public URL: retrieval from Qdrant Cloud
       (eu-west-2, 4,115 points, green), generation, and a row in Neon.
+- [x] Same image on AWS (2026-11-19) — ECS Fargate via Express Mode, ECR,
+      Secrets Manager, CloudWatch; Qdrant Cloud and Neon unchanged. Verified
+      end to end from the public endpoint (Neon `queries.id = 3`). Temporary:
+      torn down by end of November 2026. See DEPLOY.md.
+- [x] Qdrant Cloud cluster rebuilt (2026-11-19) — the idle free-tier cluster
+      had been reclaimed; restored from the local compose volume by snapshot,
+      4,115 points, no re-embedding. Streamlit Cloud secrets still point at the
+      old cluster until updated.
 
 7. **Prompt caching silently did nothing.** The gate's screening brief is
    identical across ~2000 requests, so a `cache_control` marker on it looked
