@@ -120,3 +120,116 @@ dashboard rather than estimated here.
 The API key sits in one place, Streamlit's secrets store, and is not in the
 repository. If it ever appears anywhere else — a screenshot, a paste, a log —
 rotate it in the Anthropic console; the cost of doing that is a redeploy.
+
+## The same image on AWS (ECS Express Mode)
+
+Streamlit Community Cloud installs `requirements.txt` itself and never touches
+the `Dockerfile`. To show the image is the deployable unit rather than a
+comment, the same container also ran on AWS from 2026-11-19, with no code
+change: the four variables above, nothing else.
+
+```
+  UI          ECS Fargate via Express Mode — 1 vCPU / 2 GB, exactly 1 task,
+              public HTTPS endpoint behind a managed ALB
+  image       ECR, eu-west-2
+  secrets     Secrets Manager, one secret per variable
+  logs        CloudWatch (created by Express Mode)
+  vectors     Qdrant Cloud, unchanged      query log   Neon, unchanged
+```
+
+Everything is in `eu-west-2`, the same region as the Qdrant cluster and the Neon
+database, so no request crosses a region.
+
+**Build for the target, not the laptop.** The development machine is Apple
+Silicon; Fargate defaults to x86. An `arm64` image pushes fine and then fails
+to start, so the platform is stated explicitly:
+
+```bash
+aws ecr create-repository --repository-name artmat-rag --region eu-west-2
+aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin <account>.dkr.ecr.eu-west-2.amazonaws.com
+docker buildx build --platform linux/amd64 --provenance=false -t <account>.dkr.ecr.eu-west-2.amazonaws.com/artmat-rag:v1 --push .
+```
+
+`.dockerignore` already excludes `.env` and `.streamlit/secrets.toml`, so no
+credential is baked into a layer.
+
+**One secret per variable.** The obvious layout — one JSON secret, referenced
+per key as `arn:...:secret:artmat-rag/prod-XXXX:QDRANT_URL::` — is rejected by
+`create-express-gateway-service` with *Invalid resource in secrets manager ARN*.
+Five plain-text secrets named `artmat-rag/<VARIABLE>` work, and the execution
+role's policy is scoped to `secret:artmat-rag/*` rather than `*`. The container
+receives them as environment variables, which is what `rag.env` reads.
+
+**Two roles.** `ecsTaskExecutionRole` (managed
+`AmazonECSTaskExecutionRolePolicy` plus `secretsmanager:GetSecretValue` on
+`artmat-rag/*`) pulls the image and injects secrets.
+`ecsInfrastructureRoleForExpressServices` (managed
+`AmazonECSInfrastructureRoleforExpressGatewayServices`, trusted by
+`ecs.amazonaws.com`) lets ECS create the load balancer, target group and
+security groups.
+
+**The service.** Express Mode defaults to auto-scaling between several tasks;
+this app is a demo with one user at a time, so min and max are both 1:
+
+```json
+{
+  "serviceName": "artmat-rag",
+  "executionRoleArn": "arn:aws:iam::<account>:role/ecsTaskExecutionRole",
+  "infrastructureRoleArn": "arn:aws:iam::<account>:role/ecsInfrastructureRoleForExpressServices",
+  "healthCheckPath": "/_stcore/health",
+  "primaryContainer": {
+    "image": "<account>.dkr.ecr.eu-west-2.amazonaws.com/artmat-rag:v1",
+    "containerPort": 8501,
+    "secrets": [{"name": "QDRANT_URL", "valueFrom": "arn:aws:secretsmanager:eu-west-2:<account>:secret:artmat-rag/QDRANT_URL-XXXXXX"}]
+  },
+  "cpu": "1024",
+  "memory": "2048",
+  "scalingTarget": {"minTaskCount": 1, "maxTaskCount": 1, "autoScalingMetric": "AVERAGE_CPU", "autoScalingTargetValue": 70}
+}
+```
+
+(`secrets` lists all five; one is shown.) Create it with
+`aws ecs create-express-gateway-service --region eu-west-2 --cli-input-json file://service.json`.
+Streamlit's own health endpoint is `/_stcore/health`; Express Mode's default
+`/ping` does not exist here and would keep the target unhealthy forever.
+
+Three things that look like failures and are not:
+
+- **The endpoint does not resolve for the first few minutes.** A resolver that
+  asked too early caches the negative answer; `dig` succeeds while `curl` still
+  says *Could not resolve host*. `curl --resolve host:443:<ip>` proves the
+  service is up without waiting for the cache.
+- **Two tasks run after an update.** Express Mode starts the new revision before
+  draining the old one; `runningCount` is 2 for a few minutes, then 1.
+- **A 503 right after scaling up.** No healthy target yet; the model download
+  is baked into the image, so it clears in about a minute.
+
+**Verified** on 2026-11-19 from the public endpoint: a sample question was
+rewritten, retrieved from Qdrant Cloud, answered with citations, and logged as
+a new row in Neon (`queries.id = 3`, $0.031).
+
+**Pause and teardown.** Setting min and max to 0 stops the Fargate charge but
+keeps the load balancer (and its URL), which still bills by the hour. Deleting
+the service removes the ALB; then delete the ECR repository and the
+`artmat-rag/*` secrets. Roughly $2 a day while running, covered by credits;
+the deployment is temporary by design and the Streamlit Cloud app is the
+long-lived demo.
+
+### The free Qdrant cluster is not a backup
+
+On 2026-11-19 the original Qdrant Cloud cluster was gone: an idle free-tier
+cluster is reclaimed, and both deployments failed with *connection reset by
+peer*. `data/chunks.jsonl` is gitignored and was not on disk, so `make index`
+could not rebuild it. The local compose volume still held the full collection,
+which was moved across as a snapshot — no re-embedding:
+
+```bash
+curl -X POST "localhost:6333/collections/artmat/snapshots?wait=true"
+curl -o artmat.snapshot "localhost:6333/collections/artmat/snapshots/<name>"
+curl -X POST -H "api-key: $QDRANT_API_KEY" -F "snapshot=@artmat.snapshot" \
+  "$QDRANT_URL/collections/artmat/snapshots/upload?priority=snapshot&wait=true"
+```
+
+The new cluster reported `green`, 4,115 points, `dense` + `bm25`. A 31 MB
+snapshot is the cheapest insurance in the project; keep one somewhere that is
+not a free tier.
