@@ -3,7 +3,7 @@
 # because each writes a file the next one reads.
 PY := .venv/bin/python
 
-.PHONY: help setup up down ingest chunk index eval-retrieval eval-judge ui all clean
+.PHONY: help setup up down ingest chunk index index-rebuild eval-retrieval eval-judge ui all clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-16s %s\n", $$1, $$2}'
@@ -26,7 +26,10 @@ ingest:  ## scrape and collect the three corpora (respects on-disk caches)
 chunk:  ## boilerplate filter, spec/narrative split, abstract windowing
 	$(PY) -m ingestion.chunk
 
-index: up  ## embed and load 4,115 chunks into Qdrant (~7 min, CPU, no API key)
+index: up  ## incrementally sync changed chunks into Qdrant (CPU, no API key)
+	$(PY) -m rag.index
+
+index-rebuild: up  ## discard and fully rebuild the Qdrant collection (~7 min)
 	$(PY) -m rag.index --drop
 
 eval-retrieval:  ## 200 question pairs x 5 retrieval methods
