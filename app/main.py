@@ -46,7 +46,7 @@ from rag.agent import MAX_SEARCHES, stream_agent
 from rag.generate import LAYER_DESCRIPTIONS, MODEL, PROMPTS, stream
 from rag.index import connect as qdrant_connect
 from rag.rewrite import Rewrite, rewrite, search_rewritten
-from rag.search import search
+from rag.search import PRODUCTION_METHOD, search
 
 st.set_page_config(page_title="artmat — materials for making", layout="wide")
 
@@ -106,7 +106,7 @@ def warm(qdrant) -> None:
     doubles the memory and saves nothing. It also proves the collection exists
     at boot rather than at first question.
     """
-    search(qdrant, "warm", method="hybrid", limit=1)
+    search(qdrant, "warm", method=PRODUCTION_METHOD, limit=1)
 
 
 def retrieve(question: str, k: int, use_rewrite: bool):
@@ -117,7 +117,7 @@ def retrieve(question: str, k: int, use_rewrite: bool):
         hits = search_rewritten(qdrant, rw, limit=k, rerank=False)
     else:
         rw = Rewrite(original=question, rewritten=question, used=False)
-        hits = search(qdrant, question, method="hybrid", limit=k)
+        hits = search(qdrant, question, method=PRODUCTION_METHOD, limit=k)
     return rw, hits, int((time.perf_counter() - started) * 1000)
 
 
@@ -143,7 +143,7 @@ def finish_query(
         "rewritten": rw.rewritten,
         "rewrite_used": rw.used,
         "variant": variant,
-        "method": "rewrite_hybrid" if use_rewrite else "hybrid",
+        "method": "rewrite_hybrid_mmr" if use_rewrite else PRODUCTION_METHOD,
         "answer": answer.text,
         "source_counts": source_counts,
         "chunk_ids": [h.chunk_id for h in hits],

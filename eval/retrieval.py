@@ -42,7 +42,9 @@ K = 5
 
 # Rewriting methods are named separately rather than added to rag.search's
 # METHODS, because they are not pure functions of the index: they call an LLM.
-REWRITE_METHODS = ("rewrite_hybrid", "rewrite_hybrid_rerank")
+REWRITE_METHODS = (
+    "rewrite_hybrid", "rewrite_hybrid_mmr", "rewrite_hybrid_rerank"
+)
 ALL_METHODS = METHODS + REWRITE_METHODS
 
 
@@ -120,6 +122,7 @@ def evaluate(
                     rewrites[row[style]],
                     limit=k,
                     rerank=method.endswith("rerank"),
+                    diversify_results=method.endswith("mmr"),
                 )
             else:
                 hits = search(client, row[style], method=method, limit=k)
